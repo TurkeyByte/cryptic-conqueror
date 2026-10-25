@@ -6,7 +6,7 @@ import { Strategist } from './strategist.js';
 import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
-  drawParticles, drawHud, drawBanner, drawThought,
+  drawParticles, drawHud, drawBanner, drawThought, drawControlsHint,
 } from './render.js';
 
 const ROUND_TIME = 60;
@@ -27,6 +27,7 @@ new ResizeObserver(resize).observe(canvas);
 resize();
 
 const input = new Input();
+input.attachMouse(canvas);
 const player = new Fighter('player', { maxHp: 100, walkSpeed: 250, moves: PLAYER_MOVES });
 const aswang = new Fighter('aswang', { maxHp: 120, walkSpeed: 190, moves: ASWANG_MOVES });
 const brain = new AswangBrain();
@@ -100,6 +101,8 @@ function startRound() {
   game.mode = 'intro';
   game.modeT = 0;
   game.buffer = null;
+  // Show the controls reminder for the first stretch of the first round.
+  game.hintT = game.round === 1 ? 20 : 0;
   game.banner = { text: `ROUND ${game.round}`, sub: game.round === 1 ? 'The Aswang is watching how you fight.' : `It remembers. Current mind: ${brain.intent}`, color: '#f2e6d0' };
   sfx.roundStart();
 }
@@ -298,6 +301,7 @@ function update(dt) {
   if (game.mode === 'fight') {
     if (game.banner && (game.banner.t -= dt) <= 0) game.banner = null;
     game.timer = Math.max(0, game.timer - dt);
+    game.hintT = Math.max(0, game.hintT - dt);
     if (game.buffer && (game.buffer.t -= dt) <= 0) game.buffer = null;
     controlPlayer();
     faceEachOther();
@@ -351,6 +355,7 @@ function draw() {
   if (game.mode !== 'title') {
     drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus });
     if (game.mode === 'fight') drawThought(g, aswang, game.thought);
+    if ((game.mode === 'intro' || game.mode === 'fight') && game.hintT > 0) drawControlsHint(g, Math.min(1, game.hintT / 2));
   }
   if (game.banner && (game.mode === 'intro' || game.mode === 'fight' || game.mode === 'roundEnd')) {
     const a = game.mode === 'fight' ? Math.min(1, game.banner.t * 3) : Math.min(1, game.modeT * 4);

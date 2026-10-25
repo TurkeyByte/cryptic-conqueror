@@ -35,16 +35,18 @@ Run tests: `npm test`
 
 ### Controls
 
-| Action | Keyboard | Gamepad |
+Several layouts work at the same time, so players can use whichever feels natural (W A S D + mouse like Roblox, arrows + Z X C like arcade games, or W A S D + J K L). The first round shows a controls reminder at the bottom of the arena.
+
+| Action | Keyboard / mouse | Gamepad |
 |---|---|---|
-| Move | `A` `D` / `←` `→` | Left stick / D-pad |
+| Move | `A` `D` or `←` `→` | Left stick / D-pad |
 | Jump | `W` / `↑` / `Space` | A |
-| Guard | `S` / `↓` (hold) | LB / D-pad down |
-| Witik (fast strike) | `J` | X |
-| Redonda (heavy spin) | `K` | Y |
-| Sungkite (long thrust) | `L` | B |
-| Lusob (jump strike) | `J`/`K`/`L` in the air | — |
-| Dash / evade | `Shift` | RB / RT |
+| Block | `S` / `↓` (hold) | LB / D-pad down |
+| Witik (fast strike) | Left click / `J` / `Z` | X |
+| Redonda (heavy spin) | Right click / `K` / `X` | Y |
+| Sungkite (long thrust) | `E` / `L` / `C` / middle click | B |
+| Lusob (jump strike) | Any attack in the air | — |
+| Dash / dodge | `Shift` | RB / RT |
 | Pause / mute | `P` / `M` | — |
 
 ---

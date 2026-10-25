@@ -1,10 +1,14 @@
-// Keyboard + gamepad input, merged into one snapshot per frame.
+// Keyboard + mouse + gamepad input, merged into one snapshot per frame.
+// Several layouts work at once: W A S D + J K L, arrows + Z X C, and
+// Roblox-style W A S D + Space with mouse clicks to attack.
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left',
   ArrowRight: 'right', KeyD: 'right',
   ArrowUp: 'jump', KeyW: 'jump', Space: 'jump',
   ArrowDown: 'guard', KeyS: 'guard',
   KeyJ: 'light', KeyK: 'heavy', KeyL: 'thrust',
+  KeyZ: 'light', KeyX: 'heavy', KeyC: 'thrust',
+  KeyE: 'thrust',
   ShiftLeft: 'dash', ShiftRight: 'dash', KeyI: 'dash',
 };
 
@@ -31,6 +35,18 @@ export class Input {
       if (a) this.keys.delete(a);
     });
     window.addEventListener('blur', () => this.keys.clear());
+  }
+
+  // Mouse attacks on the game canvas: left = fast strike, right = heavy, middle = thrust.
+  attachMouse(el) {
+    const buttons = ['light', 'thrust', 'heavy'];
+    el.addEventListener('mousedown', (e) => {
+      const a = buttons[e.button];
+      if (!a) return;
+      e.preventDefault();
+      this.tapped.add(a);
+    });
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   readPad() {

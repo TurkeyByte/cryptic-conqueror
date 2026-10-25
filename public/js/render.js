@@ -663,3 +663,44 @@ export function drawThought(g, aswang, th) {
   }
   g.restore();
 }
+
+// Compact controls reminder along the bottom of the arena.
+export function drawControlsHint(g, alpha) {
+  const rows = [
+    ['MOVE', 'A D  or  ← →'],
+    ['JUMP', 'W  ↑  Space'],
+    ['BLOCK', 'S  or  ↓'],
+    ['ATTACK', 'Click / Right-click   J K L   Z X C'],
+    ['DASH', 'Shift'],
+  ];
+  g.save();
+  g.globalAlpha = alpha;
+  g.font = 'bold 11px system-ui, sans-serif';
+  const gap = 22;
+  const widths = rows.map(([k, v]) => {
+    g.font = 'bold 10px system-ui, sans-serif';
+    const kw = g.measureText(k).width;
+    g.font = '12px system-ui, sans-serif';
+    return kw + 6 + g.measureText(v).width;
+  });
+  const total = widths.reduce((a, b) => a + b, 0) + gap * (rows.length - 1) + 32;
+  let x = (W - total) / 2;
+  const y = H - 34;
+  g.fillStyle = 'rgba(8,5,12,0.78)';
+  g.strokeStyle = 'rgba(224,176,64,0.35)';
+  g.lineWidth = 1;
+  g.beginPath(); g.roundRect(x, y - 16, total, 28, 8); g.fill(); g.stroke();
+  x += 16;
+  g.textAlign = 'left';
+  rows.forEach(([k, v], i) => {
+    g.font = 'bold 10px system-ui, sans-serif';
+    g.fillStyle = '#e0b040';
+    g.fillText(k, x, y + 2);
+    const kw = g.measureText(k).width;
+    g.font = '12px system-ui, sans-serif';
+    g.fillStyle = '#f2e6d0';
+    g.fillText(v, x + kw + 6, y + 2);
+    x += widths[i] + gap;
+  });
+  g.restore();
+}
