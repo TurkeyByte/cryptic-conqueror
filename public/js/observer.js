@@ -1,7 +1,7 @@
 // Collects combat observations about the player and condenses them into the
 // compact telemetry summary that is sent to Nemotron.
 
-const PLAYER_MOVES = ['witik', 'redonda', 'sungkite', 'lusob'];
+const PLAYER_MOVES = ['witik', 'redonda', 'sungkite', 'lusob', 'walis'];
 const ASWANG_MOVES = ['claw', 'pounce', 'rising', 'spit', 'grab'];
 
 function emptyWindow() {
@@ -105,7 +105,7 @@ export class Observer {
       jumpAttacks: w.attacks.lusob,
       dashes: w.dashes,
       dashesTowardAswang: w.dashesToward,
-      guardPct: Math.round((w.guardSeconds / s) * 100),
+      crouchGuardPct: Math.round((w.guardSeconds / s) * 100),
       attacksUsed: nonzero(w.attacks),
       playerHitsLanded: nonzero(w.playerHits),
       playerWhiffs: nonzero(w.playerWhiffs),

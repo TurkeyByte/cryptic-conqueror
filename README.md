@@ -41,11 +41,12 @@ Several layouts work at the same time, so players can use whichever feels natura
 |---|---|---|
 | Move | `A` `D` or `←` `→` | Left stick / D-pad |
 | Jump | `W` / `↑` / `Space` | A |
-| Block | `S` / `↓` (hold) | LB / D-pad down |
+| Crouch + block | `S` / `↓` (hold): ducks under bile spit, blocks all but grabs | LB / D-pad down |
 | Witik (fast strike) | Left click / `J` / `Z` | X |
 | Redonda (heavy spin) | Right click / `K` / `X` | Y |
 | Sungkite (long thrust) | `E` / `L` / `C` / middle click | B |
-| Lusob (jump strike) | Any attack in the air | — |
+| Lusob (jump strike) | Jump + attack together, or any attack in the air | Jump + attack |
+| Walis (low sweep) | Any attack while crouching: knocks down, beats a standing guard | Crouch + attack |
 | Dash / dodge | `Shift` | RB / RT |
 | Pause / mute | `P` / `M` | — |
 

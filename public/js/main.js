@@ -166,7 +166,8 @@ function resolve(att, def, who) {
   const dir = att.facing;
   const px = def.x - dir * 14;
   const py = Math.max(def.y - 110, Math.min(def.y - 30, hb.y + hb.h / 2));
-  const blocking = (def.state === 'guard' || def.state === 'blockstun') && !def.airborne && def.facing === -dir && !m.grab;
+  // Grabs beat any guard; low attacks beat a standing guard (only a crouching guard stops them).
+  const blocking = (def.state === 'guard' || def.state === 'blockstun') && !def.airborne && def.facing === -dir && !m.grab && !(m.low && !def.crouching);
   if (blocking) {
     def.blockHit(m, dir);
     att.vx = -dir * 90;
@@ -238,12 +239,18 @@ function controlPlayer() {
   for (const a of ['dash', 'jump', 'light', 'heavy', 'thrust']) if (p[a]) game.buffer = { a, t: 0.14 };
   const dir = (s.right ? 1 : 0) - (s.left ? 1 : 0);
   const b = game.buffer;
+  // Jump + attack together (or attacking while holding jump) is an instant jump strike.
+  if (b && b.a !== 'dash' && b.a !== 'jump' && s.jump && !player.airborne && player.jump(dir)) {
+    game.buffer = { a: b.a, t: 0.2 };
+    return;
+  }
   if (b) {
     let done = false;
     const air = player.state === 'jump';
     if (b.a === 'dash') done = player.dash(dir || -player.facing);
     else if (b.a === 'jump') done = player.jump(dir);
     else if (air) done = player.attack('lusob');
+    else if (s.guard) done = player.attack('walis');
     else done = player.attack({ light: 'witik', heavy: 'redonda', thrust: 'sungkite' }[b.a]);
     if (done) game.buffer = null;
   }

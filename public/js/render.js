@@ -272,6 +272,9 @@ const P = {
   redB:   { lean: 18, bob: 4, aF1: 20, aF2: 10, sF: 60, aB1: 40, aB2: 30, sB: 110, lF1: 48, lF2: 100, lB1: 130, lB2: 95, rot: 0 },
   sunA:   { lean: 0, bob: 4, aF1: 120, aF2: 10, sF: 0, aB1: 170, aB2: 120, sB: -150, lF1: 62, lF2: 100, lB1: 118, lB2: 92, rot: 0 },
   sunB:   { lean: 30, bob: 12, aF1: 5, aF2: 0, sF: 0, aB1: 170, aB2: 160, sB: 170, lF1: 30, lF2: 100, lB1: 150, lB2: 140, rot: 0 },
+  crouch: { lean: 2, bob: 0, aF1: 0, aF2: -75, sF: -95, aB1: 40, aB2: -65, sB: -60, lF1: 22, lF2: 112, lB1: 158, lB2: 82, rot: 0 },
+  walA:   { lean: 0, bob: 0, aF1: 150, aF2: 120, sF: -150, aB1: 160, aB2: 130, sB: -170, lF1: 25, lF2: 112, lB1: 158, lB2: 82, rot: 0 },
+  walB:   { lean: 22, bob: 0, aF1: 50, aF2: 60, sF: 15, aB1: 130, aB2: 100, sB: 175, lF1: 8, lF2: 12, lB1: 155, lB2: 85, rot: 0 },
   airA:   { lean: 0, bob: 0, aF1: -80, aF2: -120, sF: -160, aB1: 150, aB2: 110, sB: -140, lF1: 20, lF2: 110, lB1: 70, lB2: 150, rot: 0 },
   airB:   { lean: 22, bob: 0, aF1: 40, aF2: 70, sF: 80, aB1: 160, aB2: 120, sB: -160, lF1: 20, lF2: 100, lB1: 60, lB2: 140, rot: 0 },
 };
@@ -280,9 +283,10 @@ function playerPose(f) {
   const s = f.state;
   if (s === 'attack') {
     const { ph, k } = progress(f);
-    const pairs = { witik: ['witikA', 'witikB'], redonda: ['redA', 'redB'], sungkite: ['sunA', 'sunB'], lusob: ['airA', 'airB'] }[f.moveName];
+    const pairs = { witik: ['witikA', 'witikB'], redonda: ['redA', 'redB'], sungkite: ['sunA', 'sunB'], lusob: ['airA', 'airB'], walis: ['walA', 'walB'] }[f.moveName];
     const [A, B] = pairs.map((n) => P[n]);
-    if (ph === 'startup') return lerpPose(P[f.airborne ? 'jump' : 'idle'], A, ease(k));
+    if (ph === 'startup') return lerpPose(P[f.airborne ? 'jump' : f.moveName === 'walis' ? 'crouch' : 'idle'], A, ease(k));
+    if (ph === 'recovery' && f.moveName === 'walis') return lerpPose(B, P.crouch, ease(k));
     if (ph === 'active') return lerpPose(A, B, ease(Math.min(1, k * (f.moveName === 'lusob' ? 4 : 1.6))));
     return lerpPose(B, P.idle, ease(k));
   }
@@ -291,7 +295,7 @@ function playerPose(f) {
     return { ...P.idle, lF1: 65 + c * 25, lB1: 118 - c * 25, lF2: 100 + Math.max(0, c) * 20, lB2: 92 + Math.max(0, -c) * 20, bob: Math.abs(c) * -3 };
   }
   if (s === 'jump' || s === 'leap') return P.jump;
-  if (s === 'guard' || s === 'blockstun') return P.guard;
+  if (s === 'guard' || s === 'blockstun') return P.crouch;
   if (s === 'hurt') return f.knockdown && f.airborne ? lerpPose(P.hurt, P.down, clamp01(f.t * 3)) : P.hurt;
   if (s === 'down' || s === 'ko') return P.down;
   if (s === 'getup') return lerpPose(P.down, P.idle, ease(clamp01(f.t / 0.32)));
@@ -817,7 +821,7 @@ export function drawControlsHint(g, alpha) {
   const rows = [
     ['MOVE', 'A D  or  ← →'],
     ['JUMP', 'W  ↑  Space'],
-    ['BLOCK', 'S  or  ↓'],
+    ['CROUCH + BLOCK', 'S  or  ↓'],
     ['ATTACK', 'Click / Right-click   J K L   Z X C'],
     ['DASH', 'Shift'],
   ];

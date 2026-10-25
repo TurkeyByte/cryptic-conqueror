@@ -12,6 +12,8 @@ export const PLAYER_MOVES = {
   witik:    { startup: 0.07, active: 0.08, recovery: 0.16, dmg: 5,  reach: [10, 80],  y: [-125, -55], knock: 140, hitstun: 0.3,  blockstun: 0.18, sound: 'swing' },
   redonda:  { startup: 0.17, active: 0.17, recovery: 0.3,  dmg: 11, reach: [-10, 95], y: [-140, -35], knock: 360, hitstun: 0.42, blockstun: 0.26, sound: 'heavySwing' },
   sungkite: { startup: 0.13, active: 0.1,  recovery: 0.38, dmg: 8,  reach: [30, 128], y: [-115, -70], knock: 240, hitstun: 0.34, blockstun: 0.2,  lunge: 560, sound: 'swing' },
+  // Low sweep from a crouch: knocks down, and a standing guard can't block it.
+  walis:    { startup: 0.1,  active: 0.1,  recovery: 0.32, dmg: 7,  reach: [5, 100],  y: [-45, 5],    knock: 200, hitstun: 0.45, blockstun: 0.2,  low: true, knockdown: true, sound: 'swing' },
   lusob:    { startup: 0.06, active: 0.6,  recovery: 0.12, dmg: 9,  reach: [0, 82],   y: [-85, 15],   knock: 220, hitstun: 0.4,  blockstun: 0.2,  air: true, sound: 'swing' },
 };
 
@@ -62,6 +64,11 @@ export class Fighter {
     if (this.t < m.startup) return 'startup';
     if (this.t < m.startup + m.active) return 'active';
     return 'recovery';
+  }
+  // The player's guard is a crouching block, which ducks under high attacks.
+  get crouching() {
+    if (this.kind !== 'player') return false;
+    return this.state === 'guard' || (this.state === 'blockstun' && this.lowBlock) || (this.state === 'attack' && this.moveName === 'walis');
   }
   get free() { return this.state === 'idle' || this.state === 'walk' || this.state === 'guard'; }
   get recovering() { return this.state === 'attack' && this.phase === 'recovery'; }
@@ -129,7 +136,7 @@ export class Fighter {
   }
 
   hurtbox() {
-    const h = this.state === 'down' || this.state === 'ko' ? 40 : this.state === 'guard' ? 105 : 118;
+    const h = this.state === 'down' || this.state === 'ko' ? 40 : this.crouching ? 78 : this.state === 'guard' ? 105 : 118;
     return { x: this.x - 24, y: this.y - h, w: 48, h };
   }
 
@@ -146,6 +153,7 @@ export class Fighter {
   }
 
   blockHit(m, dir) {
+    this.lowBlock = this.state === 'guard';
     this.stun = m.blockstun;
     this.vx = dir * m.knock * 0.55;
     this.setState('blockstun');

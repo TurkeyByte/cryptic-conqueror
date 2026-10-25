@@ -16,8 +16,9 @@ Keep adding to this while developing. The submission requires this feedback.
 - _TODO: anything from live testing._
 
 ## Nemotron performance
-- Latency: _TODO: record the avg shown in the Aswang Mind panel (it keeps a rolling average)._
-- Model quality: _TODO: does it pick sensible counters? Does it follow the JSON-only instruction? How often does validation reject a reply (failed vs. ok count in the panel)?_
+- Latency: first live run on Vercel with `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`: about 1.1 s per plan (1.09 s last, 1.17 s average), measured from the browser, including the hop through our Vercel function. Fast enough that the Aswang adapts within a few seconds of a habit appearing.
+- Model quality: first live match: 6 of 6 replies were valid JSON with allowed intents (no rejections). Its reads matched what the player did ("player uses lusob then whiffs", leading to BAIT and punishing whiffs; punishing dashes in round 2). The observe/adapt text was terse and used internal move names; worth prompting for friendlier wording.
+- Playtest (14-year-old Roblox player): "it was cool because you can't spam", which is the adaptive AI doing its job. Requests: jump + attack at the same time, and crouch (both added).
 - Nano vs. Super: _TODO: try `NEMOTRON_MODEL=nvidia/nemotron-3-super-120b-a12b` and compare latency and plan quality._
 
 ## What we would change
