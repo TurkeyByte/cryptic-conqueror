@@ -560,7 +560,7 @@ function sneaker(g, x, y) {
 export function drawPlayer(g, f, time) {
   const p = smoothPose(f, playerPose(f), time);
   const THIGH = 30, SHIN = 30, TORSO = 40, UA = 22, FA = 20, STICK = 62, HEAD = 19;
-  const SKIN = '#b0703f', SKIN_D = '#93582d', HOOD = '#3c63c9', HOOD_D = '#2c4a9c', JEANS = '#29467e', JEANS_D = '#1f3563', RED = '#e0262f';
+  const SKIN = '#d29a66', SKIN_D = '#b67d4c', HOOD = '#3c63c9', HOOD_D = '#2c4a9c', JEANS = '#29467e', JEANS_D = '#1f3563', RED = '#e0262f';
   g.save();
   g.translate(f.x, f.y);
   g.scale(f.facing, 1);
