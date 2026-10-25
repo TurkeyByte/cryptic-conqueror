@@ -6,7 +6,7 @@ import { Strategist } from './strategist.js';
 import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
-  drawParticles, drawHud, drawBanner, drawThought, drawControlsHint,
+  drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog, drawVignette,
 } from './render.js';
 
 const ROUND_TIME = 60;
@@ -67,6 +67,7 @@ function applyPlan(s) {
     head: `${changed ? '⟳ ' : '✓ '}${s.intent}${s.focus.length ? ' · ' + s.focus.map((f) => f.replace(/_/g, ' ')).join(' · ') : ''}`,
     taunt: s.taunt ? `“${s.taunt}”` : '',
     color: INTENT_COLORS[s.intent],
+    changed,
     t: 3.2,
   };
   if (changed) sfx.adapt();
@@ -114,6 +115,7 @@ function endRound(winner, reason) {
   const w = winner === 'player' ? player : winner === 'aswang' ? aswang : null;
   if (w && w.hp > 0) w.setState('win');
   game.slowmo = reason === 'ko' ? 0.9 : 0;
+  if (reason === 'ko') { game.flash = 0.35; game.zoom = 0.07; }
   game.banner = reason === 'ko'
     ? { text: 'K.O.', sub: winner === 'player' ? 'Dakila stands.' : 'The Aswang feeds tonight…', color: winner === 'player' ? '#e0b040' : '#8fd16a' }
     : { text: 'TIME', sub: winner ? (winner === 'player' ? 'Dakila takes the round.' : 'The Aswang takes the round.') : 'Draw.', color: '#f2e6d0' };
@@ -145,6 +147,7 @@ function sparks(x, y, color, n = 12, speed = 380) {
     game.particles.push({ kind: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0.3, life: 0.3, color });
   }
   game.particles.push({ kind: 'ring', x, y, r: 40, t: 0.25, life: 0.25, color });
+  game.particles.push({ kind: 'star', x, y, vx: 0, vy: 0, r: n > 12 ? 46 : 30, rot: Math.random(), t: 0.13, life: 0.13, color: '#fffbe8' });
 }
 function dust(x, n = 6) {
   for (let i = 0; i < n; i++) {
@@ -178,6 +181,8 @@ function resolve(att, def, who) {
   def.takeHit(m, dir, wasAir);
   game.hitstop = m.dmg >= 11 ? 0.11 : 0.07;
   game.shake = m.dmg >= 11 ? 0.25 : 0.12;
+  game.zoom = m.dmg >= 11 ? 0.045 : 0.02;
+  if (m.dmg >= 11) game.flash = 0.12;
   sparks(px, py, who === 'player' ? '#ffe39a' : '#ff6a6a', m.dmg >= 11 ? 18 : 11);
   (who === 'player' ? sfx.stickHit : sfx.clawHit)();
   observer.contact(who, att.moveName, 'hit', m.dmg);
@@ -270,6 +275,10 @@ function update(dt) {
   input.update();
   game.thought && (game.thought.t -= dt);
   game.shake = Math.max(0, game.shake - dt);
+  game.zoom = Math.max(0, (game.zoom || 0) - dt * 0.2);
+  game.flash = Math.max(0, (game.flash || 0) - dt);
+  recordGhosts(player, dt);
+  recordGhosts(aswang, dt);
   for (const p of game.particles) { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; }
   game.particles = game.particles.filter((p) => p.t > 0);
   game.shownP = Math.max(player.hp / player.maxHp, game.shownP - dt * 0.35);
@@ -338,19 +347,73 @@ function update(dt) {
 }
 
 // ---------------- Draw ----------------
+// Afterimages for fast movement: dashes, lunges, leaps.
+function recordGhosts(f, dt) {
+  f.ghosts = (f.ghosts || []).filter((gh) => (gh.t -= dt) > 0);
+  const fast = f.state === 'dash' || f.state === 'leap' || (f.state === 'attack' && f.move?.lunge && f.phase !== 'startup');
+  if (fast) f.ghosts.push({ x: f.x, y: f.y, t: 0.16 });
+}
+
+// Fighters normally draw straight to the canvas. Only while one is flashing
+// from a hit or leaving afterimages is it drawn to a small layer around it,
+// which is then tinted white and/or stamped at its recent positions.
+const BOX = { left: 230, up: 340, w: 460, h: 380 };
+const layer = document.createElement('canvas');
+const lg = layer.getContext('2d');
+function drawFighter(f, paint) {
+  if (!(f.flash > 0) && !f.ghosts?.length) { paint(g); return; }
+  const sx = Math.min(canvas.width / W, 2);
+  const lw = Math.ceil(BOX.w * sx), lh = Math.ceil(BOX.h * sx);
+  if (layer.width !== lw || layer.height !== lh) { layer.width = lw; layer.height = lh; }
+  const rx = f.x - BOX.left, ry = f.y - BOX.up;
+  lg.setTransform(1, 0, 0, 1, 0, 0);
+  lg.clearRect(0, 0, lw, lh);
+  lg.setTransform(sx, 0, 0, sx, -rx * sx, -ry * sx);
+  paint(lg);
+  if (f.flash > 0) {
+    lg.setTransform(1, 0, 0, 1, 0, 0);
+    lg.globalCompositeOperation = 'source-atop';
+    lg.fillStyle = `rgba(255,255,255,${Math.min(0.75, f.flash * 6)})`;
+    lg.fillRect(0, 0, lw, lh);
+    lg.globalCompositeOperation = 'source-over';
+  }
+  for (const gh of f.ghosts || []) {
+    g.globalAlpha = (gh.t / 0.16) * 0.28;
+    g.drawImage(layer, gh.x - BOX.left, gh.y - BOX.up, BOX.w, BOX.h);
+  }
+  g.globalAlpha = 1;
+  g.drawImage(layer, rx, ry, BOX.w, BOX.h);
+}
+
 function draw() {
   g.save();
   if (game.shake > 0) g.translate((Math.random() - 0.5) * game.shake * 40, (Math.random() - 0.5) * game.shake * 30);
+  if (game.zoom > 0) {
+    // Camera punch-in on big hits, centered between the fighters.
+    const cx = (player.x + aswang.x) / 2, cy = GROUND - 90;
+    g.translate(cx, cy);
+    g.scale(1 + game.zoom, 1 + game.zoom);
+    g.translate(-cx, -cy);
+  }
   drawArena(g, game.time);
   drawShadow(g, player);
   drawShadow(g, aswang);
   const eye = INTENT_COLORS[brain.intent];
+  const aura = game.thought?.changed ? Math.max(0, (game.thought.t - 1.8) / 1.4) : 0;
+  const paintA = (c) => drawAswang(c, aswang, game.time, eye, aura);
+  const paintP = (c) => drawPlayer(c, player, game.time);
   // Draw whoever is attacking on top.
-  if (aswang.state === 'attack') { drawPlayer(g, player, game.time); drawAswang(g, aswang, game.time, eye); }
-  else { drawAswang(g, aswang, game.time, eye); drawPlayer(g, player, game.time); }
+  if (aswang.state === 'attack') { drawFighter(player, paintP); drawFighter(aswang, paintA); }
+  else { drawFighter(aswang, paintA); drawFighter(player, paintP); }
   for (const pr of game.projectiles) drawProjectile(g, pr, game.time);
+  drawFog(g, game.time);
   drawParticles(g, game.particles);
   g.restore();
+  drawVignette(g);
+  if (game.flash > 0) {
+    g.fillStyle = `rgba(255,245,230,${Math.min(0.5, game.flash * 1.6)})`;
+    g.fillRect(0, 0, W, H);
+  }
 
   if (game.mode !== 'title') {
     drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus });

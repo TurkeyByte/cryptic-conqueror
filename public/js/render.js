@@ -15,6 +15,20 @@ function lerpPose(a, b, k) {
   return out;
 }
 
+// Ease each fighter's drawn pose toward its target so state changes blend
+// instead of snapping. Attacks blend faster so strikes stay snappy.
+function smoothPose(f, target, time) {
+  const dt = f._poseT === undefined ? 1 : Math.max(0, time - f._poseT);
+  f._poseT = time;
+  if (!f._pose || dt > 0.1) {
+    f._pose = { ...target };
+    return f._pose;
+  }
+  const k = 1 - Math.exp(-(f.state === 'attack' ? 45 : 18) * dt);
+  for (const key in target) f._pose[key] = lerp(f._pose[key] ?? target[key], target[key], k);
+  return f._pose;
+}
+
 export const INTENT_COLORS = {
   INSTINCT: '#9fb7a0',
   AGGRESSIVE: '#ff4d4d',
@@ -174,6 +188,47 @@ export function drawArena(g, time) {
   drawFireflies(g, time);
 }
 
+// Low drifting ground fog, drawn in front of the fighters' feet.
+let fogSprite = null;
+export function drawFog(g, time) {
+  if (!fogSprite) {
+    fogSprite = document.createElement('canvas');
+    fogSprite.width = 256; fogSprite.height = 64;
+    const fg = fogSprite.getContext('2d');
+    const gr = fg.createRadialGradient(128, 32, 4, 128, 32, 128);
+    gr.addColorStop(0, 'rgba(190,170,215,0.55)');
+    gr.addColorStop(1, 'rgba(190,170,215,0)');
+    fg.fillStyle = gr;
+    fg.setTransform(1, 0, 0, 0.25, 0, 24);
+    fg.fillRect(0, 0, 256, 256);
+  }
+  g.save();
+  for (let i = 0; i < 7; i++) {
+    const speed = 10 + (i % 3) * 6;
+    const x = ((i * 173 + time * speed) % (W + 400)) - 200;
+    g.globalAlpha = 0.18 + 0.08 * Math.sin(time * 0.7 + i);
+    g.drawImage(fogSprite, x - 160, GROUND - 34 + (i % 2) * 14, 420, 70);
+  }
+  g.restore();
+}
+
+// Pre-rendered at low resolution; it is a smooth gradient, so upscaling is invisible.
+let vignette = null;
+export function drawVignette(g) {
+  if (!vignette) {
+    vignette = document.createElement('canvas');
+    vignette.width = W / 4; vignette.height = H / 4;
+    const vg = vignette.getContext('2d');
+    vg.scale(0.25, 0.25);
+    const gr = vg.createRadialGradient(W / 2, H * 0.55, H * 0.35, W / 2, H * 0.55, W * 0.68);
+    gr.addColorStop(0, 'rgba(0,0,0,0)');
+    gr.addColorStop(1, 'rgba(0,0,0,0.55)');
+    vg.fillStyle = gr;
+    vg.fillRect(0, 0, W, H);
+  }
+  g.drawImage(vignette, 0, 0, W, H);
+}
+
 // ---------------- Skeleton helpers ----------------
 function limb(g, x, y, a1, l1, a2, l2, w1, w2, color) {
   const ex = x + Math.cos(a1) * l1, ey = y + Math.sin(a1) * l1;
@@ -274,7 +329,7 @@ function sneaker(g, x, y) {
 // Dakila: a modern Filipino Kali fighter. Hoodie, jeans and sneakers, with his
 // heritage in the red putong (headband) and a woven bracelet.
 export function drawPlayer(g, f, time) {
-  const p = playerPose(f);
+  const p = smoothPose(f, playerPose(f), time);
   const THIGH = 34, SHIN = 34, TORSO = 52, UA = 25, FA = 23, STICK = 64;
   const SKIN = '#9a6038', HAIR = '#120c0a';
   const HOOD = '#30364a', HOOD_D = '#242939', JEANS = '#3d5f8f', JEANS_D = '#2e4a72', RED = '#c4242f';
@@ -333,6 +388,8 @@ export function drawPlayer(g, f, time) {
   g.beginPath(); g.moveTo(hdx - 11, hdy - 5); g.quadraticCurveTo(hdx - 22, hdy - 4 + tw, hdx - 30, hdy + 4 - tw); g.stroke();
   g.fillStyle = '#fff';
   g.fillRect(hdx + 5, hdy - 1, 3, 2);
+  g.strokeStyle = HAIR; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(hdx + 3, hdy - 4); g.lineTo(hdx + 9, hdy - 3.5); g.stroke();
 
   // Front arm, woven bracelet, stick.
   const [fhx, fhy, fex, fey] = limb(g, sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA, 12, 10, HOOD);
@@ -410,20 +467,53 @@ function aswangPose(f) {
   return { ...A.idle, bob: b * 3, aF2: A.idle.aF2 + b * 10, aB2: A.idle.aB2 - b * 8, head: A.idle.head + b * 5 };
 }
 
-function clawHand(g, x, y, ang) {
-  g.strokeStyle = '#e8e0d0'; g.lineWidth = 2; g.lineCap = 'round';
-  for (const off of [-0.45, 0, 0.45]) {
+function clawHand(g, x, y, ang, color = '#ece4d2') {
+  g.strokeStyle = color; g.lineWidth = 2.4; g.lineCap = 'round';
+  for (const off of [-0.5, -0.15, 0.2, 0.55]) {
     const a = ang + off;
     g.beginPath(); g.moveTo(x, y);
-    g.quadraticCurveTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10, x + Math.cos(a + 0.4) * 18, y + Math.sin(a + 0.4) * 18);
+    g.quadraticCurveTo(x + Math.cos(a) * 13, y + Math.sin(a) * 13, x + Math.cos(a + 0.45) * 25, y + Math.sin(a + 0.45) * 25);
     g.stroke();
   }
 }
 
-export function drawAswang(g, f, time, eyeColor) {
-  const p = aswangPose(f);
-  const THIGH = 38, SHIN = 40, TORSO = 56, UA = 34, FA = 32;
-  const SKIN = '#7d8a78', SKIN_D = '#5c6858', ROBE = '#1c1424', ROBE_D = '#120c18';
+// A limb with knobbly, bony joints.
+function boneLimb(g, x, y, a1, l1, a2, l2, w1, w2, color, knob) {
+  const r = limb(g, x, y, a1, l1, a2, l2, w1, w2, color);
+  g.fillStyle = knob;
+  g.beginPath(); g.arc(r[2], r[3], w1 * 0.62, 0, Math.PI * 2); g.fill();
+  return r;
+}
+
+function clawFoot(g, x, y) {
+  g.strokeStyle = '#d9d0bd'; g.lineWidth = 2; g.lineCap = 'round';
+  for (const dx of [4, 9, 14]) {
+    g.beginPath(); g.moveTo(x + dx - 6, y - 2); g.quadraticCurveTo(x + dx + 2, y - 3, x + dx + 4, y + 1); g.stroke();
+  }
+}
+
+export function drawAswang(g, f, time, eyeColor, aura = 0) {
+  const p = smoothPose(f, aswangPose(f), time);
+  const THIGH = 38, SHIN = 40, TORSO = 56, UA = 36, FA = 34;
+  const SKIN = '#7f8c79', SKIN_D = '#59654f', KNOB = '#97a38f', ROBE = '#221830', ROBE_D = '#0f0a16';
+
+  // Aura that flares in the intent color when Nemotron hands it a new plan.
+  if (aura > 0) {
+    const pulse = 0.75 + 0.25 * Math.sin(time * 14);
+    const r = 130 + (1 - Math.min(1, aura)) * 50;
+    const ag = g.createRadialGradient(f.x, f.y - 80, 10, f.x, f.y - 80, r);
+    ag.addColorStop(0, hexA(eyeColor, 0.6 * Math.min(1, aura) * pulse));
+    ag.addColorStop(0.55, hexA(eyeColor, 0.22 * Math.min(1, aura) * pulse));
+    ag.addColorStop(1, hexA(eyeColor, 0));
+    g.fillStyle = ag;
+    g.fillRect(f.x - r, f.y - 80 - r, r * 2, r * 2);
+  }
+  // Creeping shadow-smoke at its feet.
+  for (let i = 0; i < 4; i++) {
+    const sx0 = f.x + Math.sin(time * 1.3 + i * 1.7) * 26 - 30 + i * 18;
+    g.drawImage(smokeSprite(), sx0 - 30, f.y - 34, 60, 60);
+  }
+
   g.save();
   g.translate(f.x, f.y);
   g.scale(f.facing, 1);
@@ -434,92 +524,139 @@ export function drawAswang(g, f, time, eyeColor) {
   const sx = nx - Math.sin(lean) * 8, sy = ny + Math.cos(lean) * 8;
   const headA = lean + p.head * D;
   const hdx = nx + Math.sin(headA) * 13, hdy = ny - Math.cos(headA) * 13;
+  const drag = Math.min(70, Math.abs(f.vx) * 0.08);
 
-  // Long hair streaming behind (drawn first, behind everything).
+  // Mane: a dark mass of hair streaming behind, then loose strands.
+  g.fillStyle = '#040208';
+  g.beginPath();
+  g.moveTo(hdx + 4, hdy - 14);
+  g.bezierCurveTo(hdx - 30, hdy - 20, hdx - 50 - drag, hdy + 30, hdx - 46 - drag + Math.sin(time * 2) * 8, hdy + 95);
+  g.bezierCurveTo(hdx - 30, hdy + 70, hdx - 16, hdy + 30, hdx - 4, hdy + 8);
+  g.closePath();
+  g.fill();
   g.strokeStyle = '#05030a'; g.lineCap = 'round';
-  for (let i = 0; i < 9; i++) {
-    const sway = Math.sin(time * 2.2 + i * 0.7) * 10 - Math.min(80, Math.abs(f.vx) * 0.08);
-    g.lineWidth = 4 - i * 0.25;
+  for (let i = 0; i < 14; i++) {
+    const sway = Math.sin(time * 2.2 + i * 0.6) * 12 - drag;
+    g.lineWidth = 3.6 - i * 0.18;
     g.beginPath();
-    g.moveTo(hdx - 4, hdy - 8 + i);
-    g.bezierCurveTo(hdx - 30, hdy + 10 + i * 4, hdx - 40 + sway, hdy + 50 + i * 4, hdx - 50 + sway * 1.5, hdy + 80 + i * 5);
+    g.moveTo(hdx - 2, hdy - 10 + i * 0.8);
+    g.bezierCurveTo(hdx - 28, hdy + 6 + i * 3, hdx - 42 + sway, hdy + 46 + i * 4, hdx - 54 + sway * 1.4 + (i % 3) * 6, hdy + 84 + i * 5);
     g.stroke();
   }
 
-  limb(g, -3, hipY, p.lB1 * D, THIGH, p.lB2 * D, SHIN, 11, 8, SKIN_D);
-  const [bhx, bhy] = limb(g, sx - 4, sy, p.aB1 * D, UA, p.aB2 * D, FA, 8, 6, SKIN_D);
-  clawHand(g, bhx, bhy, p.aB2 * D);
+  const [blx, bly] = boneLimb(g, -3, hipY, p.lB1 * D, THIGH, p.lB2 * D, SHIN, 10, 7, SKIN_D, SKIN_D);
+  clawFoot(g, blx, bly);
+  const [bhx, bhy] = boneLimb(g, sx - 4, sy, p.aB1 * D, UA, p.aB2 * D, FA, 7, 5, SKIN_D, SKIN_D);
+  clawHand(g, bhx, bhy, p.aB2 * D, '#c9c0ad');
 
-  // Torso in a tattered robe.
+  // Torso in a tattered robe, with ribs showing through a torn chest.
   g.save();
   g.translate(0, hipY);
   g.rotate(lean);
-  g.fillStyle = ROBE;
+  const rg = g.createLinearGradient(0, -TORSO, 0, 10);
+  rg.addColorStop(0, ROBE); rg.addColorStop(1, ROBE_D);
+  g.fillStyle = rg;
   g.beginPath();
   g.moveTo(-14, 8); g.lineTo(14, 8); g.lineTo(13, -TORSO + 8); g.quadraticCurveTo(0, -TORSO - 6, -15, -TORSO + 8); g.closePath();
   g.fill();
   g.fillStyle = ROBE_D;
-  for (let i = 0; i < 5; i++) {
-    const x = -14 + i * 7, j = Math.sin(time * 3 + i) * 3;
-    g.beginPath(); g.moveTo(x, 6); g.lineTo(x + 3.5, 22 + j + (i % 2) * 6); g.lineTo(x + 7, 6); g.fill();
+  for (let i = 0; i < 7; i++) {
+    const x = -15 + i * 4.6, j = Math.sin(time * 3 + i * 1.3) * 4 + drag * 0.1;
+    g.beginPath(); g.moveTo(x, 6); g.lineTo(x + 2.3 - j * 0.3, 24 + j + (i % 3) * 7); g.lineTo(x + 4.6, 6); g.fill();
   }
-  // Visible ribs.
-  g.strokeStyle = 'rgba(125,138,120,0.45)'; g.lineWidth = 1.5;
-  for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-8, -TORSO + 20 + i * 7); g.quadraticCurveTo(0, -TORSO + 24 + i * 7, 8, -TORSO + 20 + i * 7); g.stroke(); }
+  g.fillStyle = SKIN_D;
+  g.beginPath(); g.ellipse(2, -TORSO + 26, 8, 13, 0.1, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = KNOB; g.lineWidth = 1.6;
+  for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-5, -TORSO + 17 + i * 6); g.quadraticCurveTo(2, -TORSO + 21 + i * 6, 9, -TORSO + 17 + i * 6); g.stroke(); }
   g.restore();
 
-  limb(g, 3, hipY, p.lF1 * D, THIGH, p.lF2 * D, SHIN, 11, 8, SKIN);
+  const [flx, fly] = boneLimb(g, 3, hipY, p.lF1 * D, THIGH, p.lF2 * D, SHIN, 10, 7, SKIN, KNOB);
+  clawFoot(g, flx, fly);
 
-  // Head: gaunt skull-like face, glowing eyes colored by the current intent.
+  // Head: long gaunt skull, sunken sockets, glowing eyes in the intent color.
+  const attacking = f.state === 'attack' && f.phase !== 'recovery';
   g.save();
   g.translate(hdx, hdy);
   g.rotate(headA * 0.5);
   g.fillStyle = SKIN;
-  g.beginPath(); g.ellipse(0, 0, 12, 14, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(1, 1, 11, 15, 0.15, 0, Math.PI * 2); g.fill();
+  g.fillStyle = SKIN_D;
+  g.beginPath(); g.ellipse(2, 6, 6, 4, 0, 0, Math.PI * 2); g.fill();             // hollow cheek
   g.fillStyle = '#05030a';
-  g.beginPath(); g.ellipse(-3, -6, 13, 10, -0.3, Math.PI, Math.PI * 2.1); g.fill();
-  g.shadowColor = eyeColor; g.shadowBlur = 14;
+  g.beginPath(); g.ellipse(-3, -7, 13, 10, -0.3, Math.PI, Math.PI * 2.1); g.fill(); // hairline
+  g.fillStyle = '#1a1420';
+  g.beginPath(); g.ellipse(6, -1.5, 4.6, 3.4, -0.2, 0, Math.PI * 2); g.fill();    // sockets
+  g.beginPath(); g.ellipse(-1, -1.5, 3.6, 2.8, -0.2, 0, Math.PI * 2); g.fill();
+  const flicker = 0.8 + 0.2 * Math.sin(time * 9) * Math.sin(time * 3.1);
+  g.shadowColor = eyeColor; g.shadowBlur = 18 + aura * 10;
+  g.globalAlpha = flicker;
   g.fillStyle = eyeColor;
-  g.beginPath(); g.ellipse(6, -1, 3.2, 2, -0.2, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(-1, -1, 2.4, 1.6, -0.2, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(6, -1.5, 3, 1.8, -0.2, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(-1, -1.5, 2.2, 1.4, -0.2, 0, Math.PI * 2); g.fill();
+  g.globalAlpha = 1;
   g.shadowBlur = 0;
-  // Fanged mouth.
-  g.strokeStyle = '#1a0a0a'; g.lineWidth = 1.5;
-  g.beginPath(); g.moveTo(1, 7); g.lineTo(10, 6); g.stroke();
+  g.strokeStyle = '#2a2230'; g.lineWidth = 2;                                      // brow ridge
+  g.beginPath(); g.moveTo(-4, -5.5); g.lineTo(10, -4.5); g.stroke();
+  // Jaw drops open while attacking; four fangs.
+  const jaw = attacking ? 5 : 1.5;
+  g.fillStyle = '#1a0606';
+  g.beginPath(); g.moveTo(0, 8); g.lineTo(12, 7); g.lineTo(11, 8 + jaw); g.lineTo(1, 9 + jaw * 0.6); g.closePath(); g.fill();
   g.fillStyle = '#efe6d6';
-  g.beginPath(); g.moveTo(3, 7); g.lineTo(4.5, 11); g.lineTo(6, 7); g.fill();
-  g.beginPath(); g.moveTo(7, 6.5); g.lineTo(8.5, 10); g.lineTo(10, 6.5); g.fill();
+  for (const fx of [2, 5, 8, 10.5]) {
+    g.beginPath(); g.moveTo(fx, 7.6); g.lineTo(fx + 1, 11 + (fx === 5 || fx === 10.5 ? 2 : 0)); g.lineTo(fx + 2, 7.4); g.fill();
+  }
   // The aswang's long tongue lashes out when spitting.
   if (f.state === 'attack' && f.moveName === 'spit') {
     const { ph, k } = progress(f);
-    const len = ph === 'startup' ? k * 10 : ph === 'active' ? 30 : 30 * (1 - k);
+    const len = ph === 'startup' ? k * 10 : ph === 'active' ? 34 : 34 * (1 - k);
     g.strokeStyle = '#8a2a4a'; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(9, 7); g.quadraticCurveTo(9 + len * 0.5, 12 + Math.sin(time * 30) * 3, 9 + len, 9); g.stroke();
+    g.beginPath(); g.moveTo(9, 9); g.quadraticCurveTo(9 + len * 0.5, 14 + Math.sin(time * 30) * 3, 9 + len, 11); g.stroke();
   }
   g.restore();
 
-  const [fhx, fhy] = limb(g, sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA, 8, 6, SKIN);
+  const [fhx, fhy] = boneLimb(g, sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA, 7, 5, SKIN, KNOB);
   clawHand(g, fhx, fhy, p.aF2 * D);
   g.restore();
 
-  // Claw slash arc while the attack is active.
+  // Claw slash arcs while the attack is active, tinted by the current intent.
   if (f.state === 'attack' && f.phase === 'active' && f.moveName !== 'spit') {
     const { k } = progress(f);
     g.save();
     g.translate(f.x, f.y);
     g.scale(f.facing, 1);
-    g.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`;
-    g.lineWidth = 3;
-    const cy = f.moveName === 'rising' ? -170 : -95;
-    const r = f.moveName === 'rising' ? 80 : 62;
+    const cy = f.moveName === 'rising' ? -170 : f.moveName === 'pounce' ? -55 : -95;
+    const r = f.moveName === 'rising' ? 84 : 66;
     const [a0, a1] = f.moveName === 'rising' ? [60, -100] : [-80, 70];
-    for (let i = 0; i < 3; i++) {
+    g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      g.strokeStyle = i === 0 ? `rgba(255,255,255,${0.85 * (1 - k)})` : hexA(eyeColor, 0.55 * (1 - k));
+      g.lineWidth = i === 0 ? 4 : 2.5;
       g.beginPath();
-      g.arc(25, cy, r - i * 9, a0 * D, lerp(a0, a1, ease(k * 1.5)) * D, a1 < a0);
+      g.arc(25, cy, r - i * 8, a0 * D, lerp(a0, a1, ease(Math.min(1, k * 1.5))) * D, a1 < a0);
       g.stroke();
     }
     g.restore();
   }
+}
+
+let smoke = null;
+function smokeSprite() {
+  if (!smoke) {
+    smoke = document.createElement('canvas');
+    smoke.width = smoke.height = 64;
+    const sg = smoke.getContext('2d');
+    const gr = sg.createRadialGradient(32, 32, 2, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(10,4,16,0.55)');
+    gr.addColorStop(1, 'rgba(10,4,16,0)');
+    sg.fillStyle = gr;
+    sg.fillRect(0, 0, 64, 64);
+  }
+  return smoke;
+}
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`;
 }
 
 // ---------------- Projectiles, effects, HUD ----------------
@@ -550,6 +687,17 @@ export function drawParticles(g, parts) {
     if (p.kind === 'spark') {
       g.strokeStyle = p.color; g.lineWidth = 2.5;
       g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03); g.stroke();
+    } else if (p.kind === 'star') {
+      const r = p.r * (0.4 + 0.6 * (p.t / p.life));
+      g.fillStyle = p.color;
+      g.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI) / 4 + p.rot;
+        const rr = i % 2 ? r * 0.22 : r;
+        g.lineTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr);
+      }
+      g.closePath();
+      g.fill();
     } else if (p.kind === 'ring') {
       g.strokeStyle = p.color; g.lineWidth = 3;
       g.beginPath(); g.arc(p.x, p.y, (1 - p.t / p.life) * p.r, 0, Math.PI * 2); g.stroke();
