@@ -15,7 +15,7 @@ The **Aswang Mind** panel next to the arena shows that loop as it runs: **OBSERV
 ## Roadmap
 
 - **Now (hackathon build):** Dakila vs. the Aswang, with Nemotron-driven adaptation, including the **manananggal** transformation (below).
-- **Later:** more world-tour stops, ending with a shapeshifting **kitsune** final boss that fights using the style it learned from you.
+- **Later:** more world-tour stops (Eastern Europe, Latin America, Greece), ending in Japan with a shapeshifting **kitsune** final boss. It can become every monster you have faced, fighting with all their styles and everything they learned about you.
 
 ## The manananggal transformation
 
