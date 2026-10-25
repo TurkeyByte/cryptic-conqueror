@@ -6,7 +6,7 @@ import { Strategist } from './strategist.js';
 import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
-  drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog, lanternPos,
+  drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog,
 } from './render.js';
 
 const ROUND_TIME = 60;
@@ -395,21 +395,6 @@ function drawFighter(f, paint) {
   g.drawImage(layer, rx, ry, BOX.w, BOX.h);
 }
 
-// Where the lantern and moon light each fighter from: unit directions and strength.
-const MOON = { x: 700, y: 110 };
-function lightsFor(f, camX) {
-  const cy = f.y - 80;
-  const dir = (tx, ty) => { const dx = tx - f.x, dy = ty - cy, d = Math.hypot(dx, dy) || 1; return [dx / d, dy / d, d]; };
-  const [mx, my] = dir(MOON.x, MOON.y);
-  const lp = lanternPos(camX);
-  const [lx, ly, ld] = dir(lp.x, lp.y);
-  const flick = 0.92 + Math.sin(game.time * 13) * 0.04 + Math.sin(game.time * 7) * 0.04;
-  return [
-    { x: mx, y: my, rgb: '185,195,255', a: 0.5 },
-    { x: lx, y: ly, rgb: '255,175,95', a: Math.max(0, 1 - ld / 430) * flick },
-  ];
-}
-
 function draw() {
   g.save();
   if (game.shake > 0) g.translate((Math.random() - 0.5) * game.shake * 40, (Math.random() - 0.5) * game.shake * 30);
@@ -427,8 +412,8 @@ function draw() {
   drawShadow(g, aswang);
   const eye = INTENT_COLORS[brain.intent];
   const aura = game.thought?.changed ? Math.max(0, (game.thought.t - (game.thought.life - 1.4)) / 1.4) : 0;
-  const paintA = (c) => drawAswang(c, aswang, game.time, eye, aura, lightsFor(aswang, camX));
-  const paintP = (c) => drawPlayer(c, player, game.time, lightsFor(player, camX));
+  const paintA = (c) => drawAswang(c, aswang, game.time, eye, aura);
+  const paintP = (c) => drawPlayer(c, player, game.time);
   // Draw whoever is attacking on top.
   if (aswang.state === 'attack') { drawFighter(player, paintP); drawFighter(aswang, paintA); }
   else { drawFighter(aswang, paintA); drawFighter(player, paintP); }

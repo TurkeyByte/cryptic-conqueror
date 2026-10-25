@@ -92,6 +92,8 @@ function buildSky() {
   body.addColorStop(1, '#d9b292');
   g.fillStyle = body;
   g.beginPath(); g.arc(mx, my, 56, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(20,10,22,0.85)'; g.lineWidth = 3.5;
+  g.stroke();
   [[-18, -12, 12], [14, 8, 9], [-6, 20, 7], [20, -20, 6], [-26, 14, 5], [4, -30, 4]].forEach(([dx, dy, rr]) => {
     const cg = g.createRadialGradient(mx + dx + 2, my + dy + 2, 1, mx + dx, my + dy, rr);
     cg.addColorStop(0, 'rgba(190,140,120,0.45)');
@@ -175,11 +177,14 @@ function buildMid() {
   // Bahay kubo (nipa hut) on bamboo stilts: woven walls, thatched roof, lit window.
   const hx = X(190), hy = GROUND - 70;
   g.fillStyle = '#120a1c';
-  for (const sx of [0, 50, 110, 160]) g.fillRect(hx + sx, hy, 8, 70);
+  g.strokeStyle = '#05020a'; g.lineWidth = 3;
+  for (const sx of [0, 50, 110, 160]) { g.fillRect(hx + sx, hy, 8, 70); g.strokeRect(hx + sx, hy, 8, 70); }
   g.strokeStyle = '#0a0612'; g.lineWidth = 2;
   for (const sx of [0, 50, 110, 160]) for (let y = hy + 14; y < GROUND; y += 18) { g.beginPath(); g.moveTo(hx + sx, y); g.lineTo(hx + sx + 8, y); g.stroke(); }
   g.fillStyle = '#1d1226';
   g.fillRect(hx - 10, hy - 70, 190, 72);
+  g.strokeStyle = '#05020a'; g.lineWidth = 4;
+  g.strokeRect(hx - 10, hy - 70, 190, 72);
   // Sawali (woven bamboo) wall texture.
   for (let yy = hy - 66; yy < hy; yy += 6) {
     for (let xx = hx - 8 + ((yy / 6) % 2) * 6; xx < hx + 178; xx += 12) {
@@ -191,7 +196,8 @@ function buildMid() {
   g.fillRect(hx - 14, hy - 2, 198, 6);
   // Thatched roof with layered nipa rows.
   g.fillStyle = '#100818';
-  g.beginPath(); g.moveTo(hx - 40, hy - 64); g.lineTo(hx + 85, hy - 150); g.lineTo(hx + 210, hy - 64); g.fill();
+  g.beginPath(); g.moveTo(hx - 40, hy - 64); g.lineTo(hx + 85, hy - 150); g.lineTo(hx + 210, hy - 64); g.closePath(); g.fill();
+  g.strokeStyle = '#05020a'; g.lineWidth = 4; g.lineJoin = 'round'; g.stroke();
   g.strokeStyle = 'rgba(80,50,60,0.55)'; g.lineWidth = 1;
   for (let i = 0; i < 16; i++) { g.beginPath(); g.moveTo(hx - 35 + i * 15.5, hy - 66); g.lineTo(hx + 85, hy - 148); g.stroke(); }
   g.strokeStyle = 'rgba(30,18,30,0.9)'; g.lineWidth = 2;
@@ -209,11 +215,13 @@ function buildMid() {
   const win = g.createLinearGradient(0, hy - 52, 0, hy - 22);
   win.addColorStop(0, '#ffc777'); win.addColorStop(1, '#ff9a3c');
   g.fillStyle = win; g.fillRect(hx + 104, hy - 52, 32, 30);
-  g.strokeStyle = '#2a1520'; g.lineWidth = 3;
+  g.strokeStyle = '#05020a'; g.lineWidth = 4;
   g.strokeRect(hx + 104, hy - 52, 32, 30);
+  g.lineWidth = 3;
   g.beginPath(); g.moveTo(hx + 120, hy - 52); g.lineTo(hx + 120, hy - 22); g.moveTo(hx + 104, hy - 37); g.lineTo(hx + 136, hy - 37); g.stroke();
   // Door and ladder.
   g.fillStyle = '#0d0714'; g.fillRect(hx + 18, hy - 50, 26, 48);
+  g.strokeStyle = '#05020a'; g.lineWidth = 3; g.strokeRect(hx + 18, hy - 50, 26, 48);
   g.strokeStyle = '#150c1e'; g.lineWidth = 3;
   g.beginPath(); g.moveTo(hx + 20, hy + 2); g.lineTo(hx + 5, GROUND); g.moveTo(hx + 40, hy + 2); g.lineTo(hx + 25, GROUND); g.stroke();
   g.lineWidth = 2;
@@ -254,8 +262,10 @@ function drawGround(g) {
     g.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.25)' : 'rgba(110,80,90,0.18)';
     g.beginPath(); g.ellipse(r() * W, GROUND + 6 + r() * 64, 1 + r() * 5, 0.6 + r() * 1.4, 0, 0, Math.PI * 2); g.fill();
   }
-  g.strokeStyle = '#3d2630'; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(0, GROUND); g.lineTo(W, GROUND); g.stroke();
+  g.strokeStyle = '#140a16'; g.lineWidth = 4;
+  g.beginPath(); g.moveTo(0, GROUND + 1); g.lineTo(W, GROUND + 1); g.stroke();
+  g.strokeStyle = '#4a3040'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(0, GROUND + 4); g.lineTo(W, GROUND + 4); g.stroke();
   g.strokeStyle = '#0d1a10'; g.lineWidth = 1.5;
   for (let i = 0; i < 110; i++) {
     const x = r() * W;
@@ -291,7 +301,7 @@ function cloud() {
 }
 
 // Lantern position follows the hut's parallax layer.
-export function lanternPos(camX = 0) {
+function lanternPos(camX = 0) {
   return { x: LANTERN.x - camX * MID, y: LANTERN.y };
 }
 
@@ -428,98 +438,36 @@ function drawVignette(g) {
 }
 
 // ---------------- Skeleton helpers ----------------
-// Lights for the fighter being drawn, as unit directions in its local
-// (facing-flipped, rotated) space: [{ x, y, rgb, a }].
-let LIGHTS = [];
-function useLights(lights, facing, rotDeg) {
-  const c = Math.cos(-rotDeg * D), s = Math.sin(-rotDeg * D);
-  LIGHTS = (lights || []).filter((l) => l.a > 0.02).map((l) => {
-    const x = l.x * facing, y = l.y;
-    return { x: x * c - y * s, y: x * s + y * c, rgb: l.rgb, a: l.a };
-  });
+// Cartoon style: everything is bold flat color with a thick ink outline.
+const OL = '#140a16';   // outline ink
+const OLW = 3.2;        // outline half-width
+
+// A thick round "noodle" (limb, stick, tail) along a polyline, with an ink outline.
+function noodleOutline(g, pts, w) {
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = OL; g.lineWidth = w + OLW * 2;
+  g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+}
+function noodleFill(g, pts, w, color) {
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = color; g.lineWidth = w;
+  g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+}
+function noodle(g, pts, w, color) { noodleOutline(g, pts, w); noodleFill(g, pts, w, color); }
+
+// Fill a shape with an ink outline (the outer half of the stroke shows).
+function inked(g, path, color, lw = OLW * 2) {
+  path(); g.strokeStyle = OL; g.lineWidth = lw; g.lineJoin = 'round'; g.stroke();
+  path(); g.fillStyle = color; g.fill();
+}
+function ellipsePath(g, x, y, rx, ry, rot = 0) {
+  return () => { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); };
 }
 
-// A tapered capsule from (x1,y1) radius r1 to (x2,y2) radius r2, with rim light
-// on the edges facing each light and a soft shadow line on the far side.
-function seg(g, x1, y1, x2, y2, r1, r2, color) {
-  const dx = x2 - x1, dy = y2 - y1;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len, ny = dx / len;
-  const th = Math.atan2(dy, dx);
-  g.fillStyle = color;
-  g.beginPath();
-  g.moveTo(x1 + nx * r1, y1 + ny * r1);
-  g.lineTo(x2 + nx * r2, y2 + ny * r2);
-  g.arc(x2, y2, r2, th + Math.PI / 2, th - Math.PI / 2, true);
-  g.lineTo(x1 - nx * r1, y1 - ny * r1);
-  g.arc(x1, y1, r1, th - Math.PI / 2, th + Math.PI / 2, true);
-  g.closePath();
-  g.fill();
-  g.lineCap = 'round';
-  let key = null;
-  for (const l of LIGHTS) {
-    const dot = nx * l.x + ny * l.y;
-    const side = dot >= 0 ? 1 : -1;
-    const k = Math.abs(dot) * l.a;
-    if (!key || k > key.k) key = { side, k };
-    if (k < 0.04) continue;
-    g.strokeStyle = `rgba(${l.rgb},${Math.min(0.9, k)})`;
-    g.lineWidth = 1.8;
-    g.beginPath();
-    g.moveTo(x1 + side * nx * (r1 - 1.1), y1 + side * ny * (r1 - 1.1));
-    g.lineTo(x2 + side * nx * (r2 - 1.1), y2 + side * ny * (r2 - 1.1));
-    g.stroke();
-  }
-  if (key) {
-    const sd = -key.side;
-    g.strokeStyle = 'rgba(0,0,0,0.28)';
-    g.lineWidth = Math.max(1.5, Math.min(r1, r2) * 0.7);
-    g.beginPath();
-    g.moveTo(x1 + sd * nx * r1 * 0.6, y1 + sd * ny * r1 * 0.6);
-    g.lineTo(x2 + sd * nx * r2 * 0.6, y2 + sd * ny * r2 * 0.6);
-    g.stroke();
-  }
-}
-
-// Fill a closed shape, then wash its lit sides with each light's color.
-function litShape(g, path, color, cx, cy, size) {
-  g.fillStyle = color;
-  path(); g.fill();
-  if (!LIGHTS.length) return;
-  g.save();
-  path(); g.clip();
-  for (const l of LIGHTS) {
-    const gr = g.createLinearGradient(cx + l.x * size, cy + l.y * size, cx - l.x * size * 0.2, cy - l.y * size * 0.2);
-    gr.addColorStop(0, `rgba(${l.rgb},${Math.min(0.55, l.a * 0.55)})`);
-    gr.addColorStop(0.35, `rgba(${l.rgb},0)`);
-    g.fillStyle = gr;
-    g.fillRect(cx - size * 1.5, cy - size * 1.5, size * 3, size * 3);
-  }
-  // Shade the side away from the strongest light.
-  const key = LIGHTS.reduce((m, l) => (l.a > m.a ? l : m), LIGHTS[0]);
-  const sh = g.createLinearGradient(cx - key.x * size, cy - key.y * size, cx, cy);
-  sh.addColorStop(0, 'rgba(0,0,0,0.35)');
-  sh.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = sh;
-  g.fillRect(cx - size * 1.5, cy - size * 1.5, size * 3, size * 3);
-  g.restore();
-}
-
-// Run fn with the lights rotated into a further-rotated local frame.
-function withRot(angle, fn) {
-  const saved = LIGHTS;
-  const c = Math.cos(-angle), s = Math.sin(-angle);
-  LIGHTS = LIGHTS.map((l) => ({ ...l, x: l.x * c - l.y * s, y: l.x * s + l.y * c }));
-  fn();
-  LIGHTS = saved;
-}
-
-function limb(g, x, y, a1, l1, a2, l2, w1, w2, color) {
+// Two-segment limb: [start, joint, end].
+function joint(x, y, a1, l1, a2, l2) {
   const ex = x + Math.cos(a1) * l1, ey = y + Math.sin(a1) * l1;
-  const hx = ex + Math.cos(a2) * l2, hy = ey + Math.sin(a2) * l2;
-  seg(g, x, y, ex, ey, w1 / 2, w1 * 0.42, color);
-  seg(g, ex, ey, hx, hy, w2 / 2, w2 * 0.38, color);
-  return [hx, hy, ex, ey];
+  return [[x, y], [ex, ey], [ex + Math.cos(a2) * l2, ey + Math.sin(a2) * l2]];
 }
 
 // Hip-relative foot positions so the lowest foot sits on the ground.
@@ -588,176 +536,160 @@ function playerPose(f) {
 }
 
 function stick(g, x, y, ang, len) {
-  const ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len;
-  g.lineCap = 'round';
-  g.strokeStyle = '#3b2412'; g.lineWidth = 7;
-  g.beginPath(); g.moveTo(x - Math.cos(ang) * 8, y - Math.sin(ang) * 8); g.lineTo(ex, ey); g.stroke();
-  g.strokeStyle = '#d9b26a'; g.lineWidth = 4.5;
-  g.beginPath(); g.moveTo(x - Math.cos(ang) * 7, y - Math.sin(ang) * 7); g.lineTo(ex, ey); g.stroke();
-  // Rattan node rings.
-  g.strokeStyle = '#7a5428'; g.lineWidth = 5;
-  for (const t of [0.35, 0.7]) {
+  const pts = [[x - Math.cos(ang) * 9, y - Math.sin(ang) * 9], [x + Math.cos(ang) * len, y + Math.sin(ang) * len]];
+  noodle(g, pts, 6, '#e3b867');
+  g.strokeStyle = '#9c6d2e'; g.lineWidth = 6; g.lineCap = 'butt';
+  for (const t of [0.35, 0.68]) {
     const nx = x + Math.cos(ang) * len * t, ny = y + Math.sin(ang) * len * t;
-    g.beginPath(); g.moveTo(nx - Math.cos(ang) * 1, ny - Math.sin(ang) * 1); g.lineTo(nx + Math.cos(ang) * 1, ny + Math.sin(ang) * 1); g.stroke();
+    g.beginPath(); g.moveTo(nx - Math.cos(ang) * 1.2, ny - Math.sin(ang) * 1.2); g.lineTo(nx + Math.cos(ang) * 1.2, ny + Math.sin(ang) * 1.2); g.stroke();
   }
-  return [ex, ey];
+  g.strokeStyle = 'rgba(255,240,200,0.7)'; g.lineWidth = 1.5; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(pts[0][0] - 1, pts[0][1] - 1.5); g.lineTo(pts[1][0] - 1, pts[1][1] - 1.5); g.stroke();
+  return pts[1];
 }
 
 function sneaker(g, x, y) {
-  g.fillStyle = '#e9e6df';
-  g.beginPath(); g.roundRect(x - 7, y - 6, 20, 8, [4, 6, 2, 2]); g.fill();
-  g.fillStyle = '#b3202a';
-  g.fillRect(x - 7, y + 0.5, 20, 2);
-  g.fillStyle = '#5a5550';
-  g.fillRect(x - 7, y + 2.5, 20, 1.5);
-  g.strokeStyle = '#8a8580'; g.lineWidth = 0.8;
-  for (const lx of [1, 4, 7]) { g.beginPath(); g.moveTo(x + lx, y - 6); g.lineTo(x + lx + 2, y - 3); g.stroke(); }
+  inked(g, () => { g.beginPath(); g.roundRect(x - 8, y - 9, 26, 12, [7, 9, 3, 3]); }, '#f4f1ea');
+  g.fillStyle = '#d4262f';
+  g.fillRect(x - 7, y - 1, 24, 3);
 }
 
-// A fist wrapped around the stick: skin knuckles and a thumb.
-function fist(g, x, y, ang, skin) {
-  g.fillStyle = skin;
-  g.beginPath(); g.ellipse(x, y, 5.2, 4.4, ang, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = 'rgba(40,20,10,0.45)'; g.lineWidth = 0.9;
-  for (const k of [-2, 0, 2]) {
-    const kx = x + Math.cos(ang + Math.PI / 2) * k, ky = y + Math.sin(ang + Math.PI / 2) * k;
-    g.beginPath(); g.moveTo(kx, ky); g.lineTo(kx + Math.cos(ang) * 2.5, ky + Math.sin(ang) * 2.5); g.stroke();
+// A big round cartoon eye: white with a small pupil looking forward.
+function eye(g, x, y, rx, ry, pupilDx, closed) {
+  if (closed) {
+    g.strokeStyle = OL; g.lineWidth = 2.6; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x - rx, y + 1); g.quadraticCurveTo(x, y + 3, x + rx, y + 1); g.stroke();
+    return;
   }
+  inked(g, ellipsePath(g, x, y, rx, ry), '#ffffff', 2.4);
+  g.fillStyle = OL;
+  g.beginPath(); g.arc(x + pupilDx, y + 0.5, Math.min(rx, ry) * 0.38, 0, Math.PI * 2); g.fill();
 }
 
-// Dakila: a modern Filipino Kali fighter. Hoodie, jeans and sneakers, with his
-// heritage in the red putong (headband) and a woven bracelet.
-export function drawPlayer(g, f, time, lights) {
+// Dakila: a modern Filipino Kali fighter, drawn as a bold cartoon. Hoodie,
+// jeans and big sneakers, with his heritage in the red putong (headband) and
+// a woven bracelet.
+export function drawPlayer(g, f, time) {
   const p = smoothPose(f, playerPose(f), time);
-  const THIGH = 34, SHIN = 34, TORSO = 52, UA = 25, FA = 23, STICK = 64;
-  const SKIN = '#9a6038', SKIN_D = '#7d4a2a', HAIR = '#120c0a';
-  const HOOD = '#343b52', HOOD_D = '#262b3c', JEANS = '#3f6293', JEANS_D = '#2f4b74', RED = '#c4242f';
-  useLights(lights, f.facing, p.rot);
+  const THIGH = 30, SHIN = 30, TORSO = 40, UA = 22, FA = 20, STICK = 62, HEAD = 19;
+  const SKIN = '#b0703f', SKIN_D = '#93582d', HOOD = '#3c63c9', HOOD_D = '#2c4a9c', JEANS = '#29467e', JEANS_D = '#1f3563', RED = '#e0262f';
   g.save();
   g.translate(f.x, f.y);
   g.scale(f.facing, 1);
   g.rotate(p.rot * D);
+  // Squash on landing, stretch in the air.
+  const sq = f.state === 'land' ? 0.12 : f.airborne && f.state !== 'hurt' ? -0.05 : 0;
+  g.scale(1 + sq, 1 - sq);
   const hipY = -footDrop(p, THIGH, SHIN) + p.bob;
   const lean = p.lean * D;
   const nx = Math.sin(lean) * TORSO, ny = hipY - Math.cos(lean) * TORSO;
-  const sx = nx - Math.sin(lean) * 6, sy = ny + Math.cos(lean) * 6;
-  const hdx = nx + Math.sin(lean) * 13, hdy = ny - Math.cos(lean) * 13;
+  const sx = nx - Math.sin(lean) * 5, sy = ny + Math.cos(lean) * 5;
+  const hx = nx + Math.sin(lean) * (HEAD + 2), hy = ny - Math.cos(lean) * (HEAD + 2);
 
-  // Back limbs.
-  const [blx, bly] = limb(g, -3, hipY, p.lB1 * D, THIGH, p.lB2 * D, SHIN, 15, 12, JEANS_D);
-  sneaker(g, blx, bly);
-  const [bhx, bhy, bex, bey] = limb(g, sx - 4, sy, p.aB1 * D, UA, p.aB2 * D, FA, 12, 10, HOOD_D);
-  seg(g, bex + (bhx - bex) * 0.78, bey + (bhy - bey) * 0.78, bhx, bhy, 4.6, 4.4, '#1d2130');   // cuff
-  const bTip = stick(g, bhx, bhy, p.sB * D, STICK);
-  fist(g, bhx, bhy, p.sB * D, SKIN_D);
+  // Back leg, back arm, stick and fist.
+  const bl = joint(-3, hipY, p.lB1 * D, THIGH, p.lB2 * D, SHIN);
+  noodle(g, bl, 14, JEANS_D);
+  sneaker(g, bl[2][0], bl[2][1] + 4);
+  const ba = joint(sx - 4, sy, p.aB1 * D, UA, p.aB2 * D, FA);
+  noodle(g, ba, 12, HOOD_D);
+  const bTip = stick(g, ba[2][0], ba[2][1], p.sB * D, STICK);
+  inked(g, ellipsePath(g, ba[2][0], ba[2][1], 6.5, 6.5), SKIN_D);
 
-  // Hood bunched behind the neck.
-  litShape(g, () => { g.beginPath(); g.ellipse(nx - 9, ny + 2, 11, 8, -0.4, 0, Math.PI * 2); }, HOOD_D, nx - 9, ny + 2, 12);
-
-  // Hoodie body: lit shape with seams, kangaroo pocket and swaying drawstrings.
+  // Hoodie body with a cel-shaded back side, pocket and swinging strings.
   g.save();
   g.translate(0, hipY);
   g.rotate(lean);
-  withRot(lean, () => litShape(g, () => {
+  const body = () => {
     g.beginPath();
-    g.moveTo(-15, 4); g.lineTo(15, 4); g.lineTo(17, -TORSO + 10); g.quadraticCurveTo(0, -TORSO - 5, -17, -TORSO + 10); g.closePath();
-  }, HOOD, 0, -TORSO / 2, 30));
-  g.fillStyle = HOOD_D;
-  g.fillRect(-15, -1, 30, 5);
-  g.strokeStyle = 'rgba(15,17,28,0.6)'; g.lineWidth = 1;
-  g.beginPath(); g.moveTo(-13, -TORSO + 14); g.quadraticCurveTo(-8, -TORSO + 22, -12, -2); g.stroke();   // side seam
-  g.strokeStyle = HOOD_D; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(-9, -6); g.lineTo(-7, -20); g.lineTo(9, -20); g.lineTo(11, -6); g.stroke();
-  g.strokeStyle = 'rgba(15,17,28,0.5)'; g.lineWidth = 1;
-  g.beginPath(); g.moveTo(-6, -12); g.quadraticCurveTo(1, -10, 9, -12); g.stroke();                       // fabric fold
-  const swing = Math.sin(time * 5) * 1.2 - Math.max(-3, Math.min(3, f.vx * 0.006));
-  g.strokeStyle = '#d8d2c6'; g.lineWidth = 1.5;
-  g.beginPath();
-  g.moveTo(-3, -TORSO + 6); g.quadraticCurveTo(-3 + swing * 0.5, -TORSO + 12, -4 + swing, -TORSO + 19);
-  g.moveTo(4, -TORSO + 6); g.quadraticCurveTo(4 + swing * 0.5, -TORSO + 12, 5 + swing, -TORSO + 19);
-  g.stroke();
-  g.fillStyle = '#b9b2a6';
-  g.fillRect(-5 + swing, -TORSO + 18.5, 2, 3); g.fillRect(4 + swing, -TORSO + 18.5, 2, 3);
+    g.moveTo(-17, 6); g.quadraticCurveTo(-20, -TORSO * 0.5, -15, -TORSO + 4);
+    g.quadraticCurveTo(0, -TORSO - 8, 15, -TORSO + 4); g.quadraticCurveTo(20, -TORSO * 0.5, 17, 6);
+    g.closePath();
+  };
+  inked(g, body, HOOD);
+  g.save(); body(); g.clip();
+  g.fillStyle = HOOD_D; g.fillRect(-30, -TORSO - 10, 13, TORSO + 30);
+  g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(8, -TORSO, 6, TORSO);
+  g.restore();
+  g.strokeStyle = OL; g.lineWidth = 2.2;
+  g.beginPath(); g.moveTo(-9, -2); g.lineTo(-7, -16); g.lineTo(9, -16); g.lineTo(11, -2); g.stroke();
+  g.beginPath(); g.moveTo(-16, 2); g.lineTo(16, 2); g.stroke();
+  const sw = Math.sin(time * 6) * 1.5 - Math.max(-3, Math.min(3, f.vx * 0.006));
+  g.strokeStyle = '#fff'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(-4, -TORSO + 3); g.lineTo(-4 + sw, -TORSO + 16); g.moveTo(5, -TORSO + 3); g.lineTo(5 + sw, -TORSO + 16); g.stroke();
   g.restore();
 
   // Front leg.
-  const [flx, fly, fkx, fky] = limb(g, 3, hipY, p.lF1 * D, THIGH, p.lF2 * D, SHIN, 15, 12, JEANS);
-  g.strokeStyle = 'rgba(20,35,60,0.5)'; g.lineWidth = 1;   // knee crease
-  g.beginPath(); g.arc(fkx, fky, 4, (p.lF2 + 60) * D, (p.lF2 + 120) * D); g.stroke();
-  sneaker(g, flx, fly);
+  const fl = joint(3, hipY, p.lF1 * D, THIGH, p.lF2 * D, SHIN);
+  noodle(g, fl, 14, JEANS);
+  sneaker(g, fl[2][0], fl[2][1] + 4);
 
-  // Neck and head.
-  seg(g, nx, ny + 2, hdx, hdy + 6, 4.5, 4.5, SKIN_D);
-  litShape(g, () => { g.beginPath(); g.ellipse(hdx, hdy, 11.5, 12.5, lean * 0.3, 0, Math.PI * 2); }, SKIN, hdx, hdy, 13);
-  // Ear.
-  g.fillStyle = SKIN_D;
-  g.beginPath(); g.ellipse(hdx - 3, hdy + 1, 2.6, 3.4, 0, 0, Math.PI * 2); g.fill();
-  // Hair: short fade with a few spikes on top.
-  g.fillStyle = HAIR;
-  g.beginPath(); g.arc(hdx - 1, hdy - 4, 12.5, Math.PI * 0.98, Math.PI * 1.92); g.fill();
-  g.fillRect(hdx - 11, hdy - 8, 6, 6);
-  for (const [ox, h] of [[-8, 5], [-3, 7], [2, 6], [6, 4]]) {
-    g.beginPath(); g.moveTo(hdx + ox - 3, hdy - 13); g.lineTo(hdx + ox + 1, hdy - 13 - h); g.lineTo(hdx + ox + 4, hdy - 12); g.fill();
-  }
-  // Red putong (headband) with knot tails.
-  g.fillStyle = RED;
-  g.fillRect(hdx - 12, hdy - 7, 24, 5);
-  g.fillStyle = '#e04450';
-  g.fillRect(hdx - 12, hdy - 7, 24, 1.5);
-  g.strokeStyle = RED; g.lineWidth = 3;
-  const tw = Math.sin(time * 8) * 4 - (f.state === 'dash' ? 8 : 0) - Math.min(6, Math.abs(f.vx) * 0.015);
-  g.beginPath(); g.moveTo(hdx - 11, hdy - 5); g.quadraticCurveTo(hdx - 22, hdy - 4 + tw, hdx - 31, hdy + 3 - tw); g.stroke();
-  g.lineWidth = 2.4;
-  g.beginPath(); g.moveTo(hdx - 11, hdy - 4); g.quadraticCurveTo(hdx - 20, hdy + 1 - tw * 0.5, hdx - 26, hdy + 9 + tw * 0.6); g.stroke();
-  // Face: brow, eye that blinks, nose, mouth that opens when striking.
-  const blink = (time % 3.7) < 0.12 || f.state === 'hurt';
-  if (blink) {
-    g.strokeStyle = HAIR; g.lineWidth = 1.4;
-    g.beginPath(); g.moveTo(hdx + 4.5, hdy - 0.5); g.lineTo(hdx + 8.5, hdy); g.stroke();
+  // Headband tails flapping behind the head.
+  const tw = Math.sin(time * 9) * 5 - Math.min(10, Math.abs(f.vx) * 0.02) - (f.state === 'dash' ? 8 : 0);
+  noodle(g, [[hx - 14, hy - 6], [hx - 28, hy - 6 + tw], [hx - 40, hy + 2 - tw]], 5, RED);
+  noodle(g, [[hx - 14, hy - 4], [hx - 26, hy + 4 - tw * 0.5], [hx - 34, hy + 14 + tw * 0.6]], 4, RED);
+
+  // Big head with a shaded back, spiky hair, headband and ear.
+  inked(g, ellipsePath(g, hx, hy, HEAD, HEAD * 1.02), SKIN);
+  g.save(); ellipsePath(g, hx, hy, HEAD, HEAD * 1.02)(); g.clip();
+  g.fillStyle = SKIN_D; g.beginPath(); g.arc(hx - 14, hy + 6, 16, 0, Math.PI * 2); g.fill();
+  g.restore();
+  inked(g, () => {
+    g.beginPath();
+    g.moveTo(hx - HEAD - 1, hy + 2);
+    g.lineTo(hx - HEAD + 1, hy - 10);
+    for (const [dx, dy] of [[-14, -26], [-8, -20], [-2, -31], [4, -22], [10, -29], [14, -18], [19, -12]]) g.lineTo(hx + dx, hy + dy);
+    g.quadraticCurveTo(hx + 6, hy - 13, hx - 6, hy - 10);
+    g.quadraticCurveTo(hx - 12, hy - 4, hx - 13, hy + 4);
+    g.closePath();
+  }, '#1a1212');
+  inked(g, () => { g.beginPath(); g.moveTo(hx - HEAD + 1, hy - 10); g.lineTo(hx + HEAD - 1, hy - 14); g.lineTo(hx + HEAD - 0.5, hy - 8); g.lineTo(hx - HEAD + 0.5, hy - 3); g.closePath(); }, RED);
+  inked(g, ellipsePath(g, hx - 5, hy + 4, 4, 5.5), SKIN, 3);
+
+  // Face: two big eyes with small pupils, thick brows, no nose, attitude mouth.
+  const hurt = f.state === 'hurt' || f.state === 'down' || f.state === 'ko';
+  const blink = (time % 3.4) < 0.1;
+  const look = hurt ? -1 : 1.6;
+  eye(g, hx + 3, hy + 1, 4.6, 6, look, blink || hurt);
+  eye(g, hx + 12, hy + 1, 5.6, 7, look, blink || hurt);
+  g.strokeStyle = OL; g.lineWidth = 3.6; g.lineCap = 'round';
+  const browY = hurt ? -9 : -7;
+  g.beginPath(); g.moveTo(hx - 0.5, hy + browY - 2); g.lineTo(hx + 5.5, hy + browY); g.stroke();
+  g.beginPath(); g.moveTo(hx + 8.5, hy + browY + 0.5); g.lineTo(hx + 17, hy + browY - 2.5); g.stroke();
+  const striking = f.state === 'attack' && f.phase !== 'recovery';
+  if (striking || f.state === 'win') {
+    // Battle shout.
+    inked(g, () => { g.beginPath(); g.moveTo(hx + 5, hy + 11); g.quadraticCurveTo(hx + 11, hy + 21, hx + 17, hy + 11); g.closePath(); }, '#5a1414', 2.4);
+  } else if (hurt) {
+    g.strokeStyle = OL; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(hx + 5, hy + 14); g.quadraticCurveTo(hx + 10, hy + 10, hx + 15, hy + 14); g.stroke();
   } else {
-    g.fillStyle = '#f4efe6';
-    g.beginPath(); g.ellipse(hdx + 6.5, hdy - 0.5, 2.6, 1.8, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#1a0f0a';
-    g.beginPath(); g.arc(hdx + 7.4, hdy - 0.4, 1.2, 0, Math.PI * 2); g.fill();
-  }
-  g.strokeStyle = HAIR; g.lineWidth = 1.8;
-  g.beginPath(); g.moveTo(hdx + 3, hdy - 4.5); g.lineTo(hdx + 9.5, hdy - 3.6); g.stroke();
-  g.strokeStyle = SKIN_D; g.lineWidth = 1.4;
-  g.beginPath(); g.moveTo(hdx + 11, hdy + 1); g.lineTo(hdx + 12.2, hdy + 4); g.lineTo(hdx + 10.5, hdy + 4.5); g.stroke();
-  if (f.state === 'attack' && f.phase !== 'recovery') {
-    g.fillStyle = '#3a1410';
-    g.beginPath(); g.ellipse(hdx + 8.5, hdy + 7.5, 2, 1.6, 0, 0, Math.PI * 2); g.fill();
-  } else {
-    g.strokeStyle = '#4a2418'; g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(hdx + 6.5, hdy + 7.5); g.lineTo(hdx + 10, hdy + 7); g.stroke();
+    g.strokeStyle = OL; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(hx + 5, hy + 12); g.quadraticCurveTo(hx + 11, hy + 15, hx + 16, hy + 10); g.stroke();
   }
 
-  // Front arm, woven bracelet, stick, fist.
-  const [fhx, fhy, fex, fey] = limb(g, sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA, 12, 10, HOOD);
-  seg(g, fex + (fhx - fex) * 0.62, fey + (fhy - fey) * 0.62, fex + (fhx - fex) * 0.78, fey + (fhy - fey) * 0.78, 4.6, 4.4, '#262b3c'); // cuff
-  const dx = (fhx - fex) * 0.06, dy = (fhy - fey) * 0.06;
-  const bx = fex + (fhx - fex) * 0.86, by = fey + (fhy - fey) * 0.86;
-  g.lineCap = 'butt';
-  g.strokeStyle = '#e0b040'; g.lineWidth = 9;
-  g.beginPath(); g.moveTo(bx - dx, by - dy); g.lineTo(bx + dx, by + dy); g.stroke();
-  g.strokeStyle = RED; g.setLineDash([2, 2]);
-  g.beginPath(); g.moveTo(bx - dx, by - dy); g.lineTo(bx + dx, by + dy); g.stroke();
-  g.setLineDash([]);
-  g.lineCap = 'round';
-  const fTip = stick(g, fhx, fhy, p.sF * D, STICK);
-  fist(g, fhx, fhy, p.sF * D, SKIN);
+  // Front arm, woven bracelet, stick and fist.
+  const fa = joint(sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA);
+  noodle(g, fa, 12, HOOD);
+  const bx = fa[1][0] + (fa[2][0] - fa[1][0]) * 0.75, by = fa[1][1] + (fa[2][1] - fa[1][1]) * 0.75;
+  inked(g, ellipsePath(g, bx, by, 6.5, 6.5), '#f0b83a', 3);
+  g.fillStyle = RED; g.beginPath(); g.arc(bx, by, 3, 0, Math.PI * 2); g.fill();
+  const fTip = stick(g, fa[2][0], fa[2][1], p.sF * D, STICK);
+  inked(g, ellipsePath(g, fa[2][0], fa[2][1], 7, 7), SKIN);
   g.restore();
 
   // Stick motion trails while attacking (world space).
+  const k = 1 + sq;
   const toWorld = ([x, y]) => {
     const c = Math.cos(p.rot * D), s = Math.sin(p.rot * D);
-    return [f.x + f.facing * (x * c - y * s), f.y + (x * s + y * c)];
+    const lx = x * k, ly = y * (1 - sq);
+    return [f.x + f.facing * (lx * c - ly * s), f.y + (lx * s + ly * c)];
   };
   if (f.state === 'attack' && f.phase !== 'recovery') f.trail.push([...toWorld(fTip), ...toWorld(bTip), time]);
   f.trail = f.trail.filter((t) => time - t[4] < 0.12);
   if (f.trail.length > 1) {
-    g.strokeStyle = 'rgba(255,230,170,0.5)';
-    g.lineWidth = 3;
+    g.lineCap = 'round';
+    g.strokeStyle = 'rgba(255,240,190,0.75)';
+    g.lineWidth = 5;
     g.beginPath();
     f.trail.forEach((t, i) => (i ? g.lineTo(t[0], t[1]) : g.moveTo(t[0], t[1])));
     g.stroke();
@@ -808,36 +740,29 @@ function aswangPose(f) {
   return { ...A.idle, bob: b * 3, aF2: A.idle.aF2 + b * 10, aB2: A.idle.aB2 - b * 8, head: A.idle.head + b * 5 };
 }
 
-function clawHand(g, x, y, ang, color = '#ece4d2') {
-  g.strokeStyle = color; g.lineWidth = 2.4; g.lineCap = 'round';
-  for (const off of [-0.5, -0.15, 0.2, 0.55]) {
+// Four long curved talons, inked.
+function claws(g, x, y, ang, skin) {
+  const talon = (off) => {
     const a = ang + off;
-    g.beginPath(); g.moveTo(x, y);
-    g.quadraticCurveTo(x + Math.cos(a) * 13, y + Math.sin(a) * 13, x + Math.cos(a + 0.45) * 25, y + Math.sin(a + 0.45) * 25);
-    g.stroke();
-  }
+    return [[x, y], [x + Math.cos(a) * 12, y + Math.sin(a) * 12], [x + Math.cos(a + 0.5) * 24, y + Math.sin(a + 0.5) * 24]];
+  };
+  const offs = [-0.5, -0.12, 0.26, 0.6];
+  for (const o of offs) noodleOutline(g, talon(o), 3);
+  for (const o of offs) noodleFill(g, talon(o), 3, '#f6efdc');
+  inked(g, ellipsePath(g, x, y, 5.5, 5.5), skin, 4);
+}
+function footClaws(g, x, y) {
+  const toe = (dx) => [[x + dx - 6, y - 3], [x + dx + 3, y - 2], [x + dx + 6, y + 1]];
+  for (const dx of [2, 8, 14]) noodleOutline(g, toe(dx), 2.5);
+  for (const dx of [2, 8, 14]) noodleFill(g, toe(dx), 2.5, '#f6efdc');
 }
 
-// A limb with knobbly, bony joints.
-function boneLimb(g, x, y, a1, l1, a2, l2, w1, w2, color, knob) {
-  const r = limb(g, x, y, a1, l1, a2, l2, w1, w2, color);
-  g.fillStyle = knob;
-  g.beginPath(); g.arc(r[2], r[3], w1 * 0.62, 0, Math.PI * 2); g.fill();
-  return r;
-}
-
-function clawFoot(g, x, y) {
-  g.strokeStyle = '#d9d0bd'; g.lineWidth = 2; g.lineCap = 'round';
-  for (const dx of [4, 9, 14]) {
-    g.beginPath(); g.moveTo(x + dx - 6, y - 2); g.quadraticCurveTo(x + dx + 2, y - 3, x + dx + 4, y + 1); g.stroke();
-  }
-}
-
-export function drawAswang(g, f, time, eyeColor, aura = 0, lights) {
+// The Aswang as a goofy-creepy cartoon: huge head, glowing eyes in the
+// current intent's color, a fanged grin, noodly limbs and a tattered robe.
+export function drawAswang(g, f, time, eyeColor, aura = 0) {
   const p = smoothPose(f, aswangPose(f), time);
-  useLights(lights, f.facing, p.rot);
-  const THIGH = 38, SHIN = 40, TORSO = 56, UA = 36, FA = 34;
-  const SKIN = '#7f8c79', SKIN_D = '#59654f', KNOB = '#97a38f', ROBE = '#221830', ROBE_D = '#0f0a16';
+  const THIGH = 36, SHIN = 38, TORSO = 48, UA = 34, FA = 32, HEAD = 21;
+  const SKIN = '#9fb487', SKIN_D = '#7a8c66', ROBE = '#3a2450', ROBE_D = '#2a1840', HAIR = '#120a1a';
 
   // Aura that flares in the intent color when Nemotron hands it a new plan.
   if (aura > 0) {
@@ -860,111 +785,126 @@ export function drawAswang(g, f, time, eyeColor, aura = 0, lights) {
   g.translate(f.x, f.y);
   g.scale(f.facing, 1);
   g.rotate(p.rot * D);
+  const sq = f.state === 'land' ? 0.12 : 0;
+  g.scale(1 + sq, 1 - sq);
   const hipY = -footDrop(p, THIGH, SHIN) + p.bob;
   const lean = p.lean * D;
   const nx = Math.sin(lean) * TORSO, ny = hipY - Math.cos(lean) * TORSO;
-  const sx = nx - Math.sin(lean) * 8, sy = ny + Math.cos(lean) * 8;
+  const sx = nx - Math.sin(lean) * 6, sy = ny + Math.cos(lean) * 6;
   const headA = lean + p.head * D;
-  const hdx = nx + Math.sin(headA) * 13, hdy = ny - Math.cos(headA) * 13;
-  const drag = Math.min(70, Math.abs(f.vx) * 0.08);
+  const hx = nx + Math.sin(headA) * (HEAD + 2), hy = ny - Math.cos(headA) * (HEAD + 2);
+  const drag = Math.min(60, Math.abs(f.vx) * 0.07);
 
-  // Mane: a dark mass of hair streaming behind, then loose strands.
-  g.fillStyle = '#040208';
-  g.beginPath();
-  g.moveTo(hdx + 4, hdy - 14);
-  g.bezierCurveTo(hdx - 30, hdy - 20, hdx - 50 - drag, hdy + 30, hdx - 46 - drag + Math.sin(time * 2) * 8, hdy + 95);
-  g.bezierCurveTo(hdx - 30, hdy + 70, hdx - 16, hdy + 30, hdx - 4, hdy + 8);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = '#05030a'; g.lineCap = 'round';
-  for (let i = 0; i < 14; i++) {
-    const sway = Math.sin(time * 2.2 + i * 0.6) * 12 - drag;
-    g.lineWidth = 3.6 - i * 0.18;
+  // Wild hair mass behind everything.
+  inked(g, () => {
     g.beginPath();
-    g.moveTo(hdx - 2, hdy - 10 + i * 0.8);
-    g.bezierCurveTo(hdx - 28, hdy + 6 + i * 3, hdx - 42 + sway, hdy + 46 + i * 4, hdx - 54 + sway * 1.4 + (i % 3) * 6, hdy + 84 + i * 5);
-    g.stroke();
-  }
+    g.moveTo(hx + 8, hy - 18);
+    g.bezierCurveTo(hx - 30, hy - 32, hx - 56 - drag, hy + 10, hx - 50 - drag + Math.sin(time * 2.4) * 8, hy + 96);
+    for (let i = 0; i < 6; i++) g.lineTo(hx - 50 - drag + i * 7 + Math.sin(time * 3 + i) * 4, hy + 96 - (i % 2) * 14 - i * 4);
+    g.bezierCurveTo(hx - 18, hy + 50, hx - 14, hy + 20, hx - 2, hy + 6);
+    g.closePath();
+  }, HAIR);
 
-  const [blx, bly] = boneLimb(g, -3, hipY, p.lB1 * D, THIGH, p.lB2 * D, SHIN, 10, 7, SKIN_D, SKIN_D);
-  clawFoot(g, blx, bly);
-  const [bhx, bhy] = boneLimb(g, sx - 4, sy, p.aB1 * D, UA, p.aB2 * D, FA, 7, 5, SKIN_D, SKIN_D);
-  clawHand(g, bhx, bhy, p.aB2 * D, '#c9c0ad');
+  // Back limbs: skinny and knobbly.
+  const bl = joint(-3, hipY, p.lB1 * D, THIGH, p.lB2 * D, SHIN);
+  noodle(g, bl, 9, SKIN_D);
+  inked(g, ellipsePath(g, bl[1][0], bl[1][1], 6, 6), SKIN_D, 4);
+  footClaws(g, bl[2][0], bl[2][1]);
+  const ba = joint(sx - 4, sy, p.aB1 * D, UA, p.aB2 * D, FA);
+  noodle(g, ba, 7, SKIN_D);
+  inked(g, ellipsePath(g, ba[1][0], ba[1][1], 5, 5), SKIN_D, 4);
+  claws(g, ba[2][0], ba[2][1], p.aB2 * D, SKIN_D);
 
-  // Torso in a tattered robe, with ribs showing through a torn chest.
+  // Tattered robe with a shaded back and ribs showing through a torn chest.
   g.save();
   g.translate(0, hipY);
   g.rotate(lean);
-  const rg = g.createLinearGradient(0, -TORSO, 0, 10);
-  rg.addColorStop(0, ROBE); rg.addColorStop(1, ROBE_D);
-  withRot(lean, () => litShape(g, () => {
+  const robe = () => {
     g.beginPath();
-    g.moveTo(-14, 8); g.lineTo(14, 8); g.lineTo(13, -TORSO + 8); g.quadraticCurveTo(0, -TORSO - 6, -15, -TORSO + 8); g.closePath();
-  }, rg, 0, -TORSO / 2, 30));
-  g.fillStyle = ROBE_D;
-  for (let i = 0; i < 7; i++) {
-    const x = -15 + i * 4.6, j = Math.sin(time * 3 + i * 1.3) * 4 + drag * 0.1;
-    g.beginPath(); g.moveTo(x, 6); g.lineTo(x + 2.3 - j * 0.3, 24 + j + (i % 3) * 7); g.lineTo(x + 4.6, 6); g.fill();
-  }
-  g.fillStyle = SKIN_D;
-  g.beginPath(); g.ellipse(2, -TORSO + 26, 8, 13, 0.1, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = KNOB; g.lineWidth = 1.6;
-  for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-5, -TORSO + 17 + i * 6); g.quadraticCurveTo(2, -TORSO + 21 + i * 6, 9, -TORSO + 17 + i * 6); g.stroke(); }
+    g.moveTo(-15, -TORSO + 6); g.quadraticCurveTo(0, -TORSO - 8, 15, -TORSO + 6);
+    g.lineTo(16, 4);
+    for (let i = 0; i <= 6; i++) { const x = 16 - i * 5.3; g.lineTo(x - 2.6, 16 + (i % 2) * 9 + Math.sin(time * 3 + i) * 3); g.lineTo(x - 5.3, 4); }
+    g.closePath();
+  };
+  inked(g, robe, ROBE);
+  g.save(); robe(); g.clip();
+  g.fillStyle = ROBE_D; g.fillRect(-22, -TORSO - 10, 12, TORSO + 40);
+  g.restore();
+  inked(g, ellipsePath(g, 3, -TORSO + 22, 8, 12, 0.1), SKIN, 4);
+  g.strokeStyle = OL; g.lineWidth = 2;
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-3, -TORSO + 15 + i * 6); g.quadraticCurveTo(3, -TORSO + 19 + i * 6, 9, -TORSO + 15 + i * 6); g.stroke(); }
   g.restore();
 
-  const [flx, fly] = boneLimb(g, 3, hipY, p.lF1 * D, THIGH, p.lF2 * D, SHIN, 10, 7, SKIN, KNOB);
-  clawFoot(g, flx, fly);
+  const fl = joint(3, hipY, p.lF1 * D, THIGH, p.lF2 * D, SHIN);
+  noodle(g, fl, 9, SKIN);
+  inked(g, ellipsePath(g, fl[1][0], fl[1][1], 6, 6), SKIN, 4);
+  footClaws(g, fl[2][0], fl[2][1]);
 
-  // Head: long gaunt skull, sunken sockets, glowing eyes in the intent color.
-  const attacking = f.state === 'attack' && f.phase !== 'recovery';
+  // Big head: long jaw, glowing eyes, fanged grin.
   g.save();
-  g.translate(hdx, hdy);
+  g.translate(hx, hy);
   g.rotate(headA * 0.5);
-  withRot(headA * 0.5, () => litShape(g, () => { g.beginPath(); g.ellipse(1, 1, 11, 15, 0.15, 0, Math.PI * 2); }, SKIN, 1, 1, 15));
-  g.fillStyle = SKIN_D;
-  g.beginPath(); g.ellipse(2, 6, 6, 4, 0, 0, Math.PI * 2); g.fill();             // hollow cheek
-  g.fillStyle = '#05030a';
-  g.beginPath(); g.ellipse(-3, -8.5, 13, 9, -0.3, Math.PI, Math.PI * 2.05); g.fill(); // hairline
-  // Deep black sockets, then eyes that glow in the intent color around a white-hot core.
-  g.fillStyle = 'rgba(5,2,8,0.6)';
-  g.beginPath(); g.ellipse(6.2, -1, 3.4, 2.4, -0.25, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(-0.9, -1, 2.5, 1.9, -0.25, 0, Math.PI * 2); g.fill();
-  const flicker = 0.8 + 0.2 * Math.sin(time * 9) * Math.sin(time * 3.1);
-  g.globalAlpha = flicker;
-  g.shadowColor = eyeColor; g.shadowBlur = 16 + aura * 10;
+  const attacking = f.state === 'attack' && f.phase !== 'recovery';
+  const hurt = f.state === 'hurt' || f.state === 'down' || f.state === 'ko';
+  const jaw = attacking ? 9 : 3;
+  inked(g, ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12), SKIN);
+  g.save(); ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12)(); g.clip();
+  g.fillStyle = SKIN_D; g.beginPath(); g.arc(-14, 8, 16, 0, Math.PI * 2); g.fill();
+  g.restore();
+  // Hair fringe.
+  inked(g, () => { g.beginPath(); g.moveTo(-19, 2); g.quadraticCurveTo(-16, -24, 6, -22); g.lineTo(2, -15); g.lineTo(-4, -19); g.lineTo(-8, -11); g.lineTo(-12, -15); g.lineTo(-14, 0); g.closePath(); }, HAIR);
+  // Eyes: soft dark sockets, glowing in the intent color, slit pupils. No ink
+  // rings around them, so they read as glowing eyes rather than glasses.
+  g.fillStyle = 'rgba(20,10,22,0.55)';
+  g.beginPath(); g.ellipse(9.5, -3.5, 8, 6.5, -0.25, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(-2.5, -3.5, 5.5, 5, -0.25, 0, Math.PI * 2); g.fill();
+  const flick = 0.85 + 0.15 * Math.sin(time * 9) * Math.sin(time * 3.1);
+  g.shadowColor = eyeColor; g.shadowBlur = 14 + aura * 10;
   g.fillStyle = eyeColor;
-  g.beginPath(); g.ellipse(6.4, -1.1, 2.9, 1.7, -0.25, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(-0.8, -1.1, 2.1, 1.3, -0.25, 0, Math.PI * 2); g.fill();
-  g.fill();
-  g.shadowBlur = 0;
-  g.fillStyle = '#fffbe8';
-  g.beginPath(); g.arc(6.8, -1.3, 0.9, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.arc(-0.5, -1.3, 0.6, 0, Math.PI * 2); g.fill();
-  g.globalAlpha = 1;
-  g.strokeStyle = '#2a2230'; g.lineWidth = 2;                                      // brow ridge
-  g.beginPath(); g.moveTo(-4, -5.5); g.lineTo(10, -4.5); g.stroke();
-  // Jaw drops open while attacking; four fangs.
-  const jaw = attacking ? 5 : 1.5;
-  g.fillStyle = '#1a0606';
-  g.beginPath(); g.moveTo(0, 8); g.lineTo(12, 7); g.lineTo(11, 8 + jaw); g.lineTo(1, 9 + jaw * 0.6); g.closePath(); g.fill();
-  g.fillStyle = '#efe6d6';
-  for (const fx of [2, 5, 8, 10.5]) {
-    g.beginPath(); g.moveTo(fx, 7.6); g.lineTo(fx + 1, 11 + (fx === 5 || fx === 10.5 ? 2 : 0)); g.lineTo(fx + 2, 7.4); g.fill();
+  if (hurt) {
+    g.strokeStyle = eyeColor; g.lineWidth = 2.5; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(5, -6); g.lineTo(14, -1); g.moveTo(5, -1); g.lineTo(14, -6); g.stroke();
+    g.beginPath(); g.moveTo(-5, -5.5); g.lineTo(0, -1.5); g.moveTo(-5, -1.5); g.lineTo(0, -5.5); g.stroke();
+  } else {
+    g.beginPath(); g.ellipse(9.5, -3.5, 6, 4.6, -0.25, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(-2.5, -3.5, 3.8, 3.4, -0.25, 0, Math.PI * 2); g.fill();
   }
-  // The aswang's long tongue lashes out when spitting.
+  g.shadowBlur = 0;
+  if (!hurt) {
+    g.globalAlpha = flick;
+    g.fillStyle = '#fffbe8';
+    g.beginPath(); g.ellipse(9, -4, 3, 2.2, -0.25, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 1;
+    g.fillStyle = OL;
+    g.beginPath(); g.ellipse(11, -3.5, 1.3, 3.6, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(-1.6, -3.5, 1, 2.7, 0, 0, Math.PI * 2); g.fill();
+  }
+  // Separate angry brows.
+  g.strokeStyle = OL; g.lineWidth = 3.6; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(3.5, -12); g.lineTo(16, -8.5); g.stroke();
+  g.beginPath(); g.moveTo(-7, -9.5); g.lineTo(0.5, -10.5); g.stroke();
+  // Wide grin full of fangs.
+  inked(g, () => { g.beginPath(); g.moveTo(-6, 9); g.quadraticCurveTo(6, 13, 19, 6); g.quadraticCurveTo(10, 14 + jaw, -4, 12 + jaw * 0.5); g.closePath(); }, '#3a0a14', 3);
+  g.fillStyle = '#fff8e8';
+  for (let i = 0; i < 6; i++) {
+    const tx = -3 + i * 3.6, ty = 9.5 + Math.sin((i / 5) * Math.PI) * 1.5 - (i / 5) * 3.5;
+    g.beginPath(); g.moveTo(tx, ty); g.lineTo(tx + 1.6, ty + 4 + (i % 2) * 1.5); g.lineTo(tx + 3.2, ty); g.fill();
+  }
+  // Its long tongue lashes out when spitting.
   if (f.state === 'attack' && f.moveName === 'spit') {
     const { ph, k } = progress(f);
-    const len = ph === 'startup' ? k * 10 : ph === 'active' ? 34 : 34 * (1 - k);
-    g.strokeStyle = '#8a2a4a'; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(9, 9); g.quadraticCurveTo(9 + len * 0.5, 14 + Math.sin(time * 30) * 3, 9 + len, 11); g.stroke();
+    const len = ph === 'startup' ? k * 12 : ph === 'active' ? 38 : 38 * (1 - k);
+    noodle(g, [[12, 11], [12 + len * 0.5, 17 + Math.sin(time * 30) * 3], [12 + len, 13]], 4, '#c43a6a');
   }
   g.restore();
 
-  const [fhx, fhy] = boneLimb(g, sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA, 7, 5, SKIN, KNOB);
-  clawHand(g, fhx, fhy, p.aF2 * D);
+  const fa = joint(sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA);
+  noodle(g, fa, 7, SKIN);
+  inked(g, ellipsePath(g, fa[1][0], fa[1][1], 5, 5), SKIN, 4);
+  claws(g, fa[2][0], fa[2][1], p.aF2 * D, SKIN);
   g.restore();
 
-  // Claw slash arcs while the attack is active, tinted by the current intent.
+  // Claw slash arcs while the attack is active, inked and tinted by the intent.
   if (f.state === 'attack' && f.phase === 'active' && f.moveName !== 'spit') {
     const { k } = progress(f);
     g.save();
@@ -973,13 +913,13 @@ export function drawAswang(g, f, time, eyeColor, aura = 0, lights) {
     const cy = f.moveName === 'rising' ? -170 : f.moveName === 'pounce' ? -55 : -95;
     const r = f.moveName === 'rising' ? 84 : 66;
     const [a0, a1] = f.moveName === 'rising' ? [60, -100] : [-80, 70];
+    const end = lerp(a0, a1, ease(Math.min(1, k * 1.5))) * D;
     g.lineCap = 'round';
-    for (let i = 0; i < 4; i++) {
-      g.strokeStyle = i === 0 ? `rgba(255,255,255,${0.85 * (1 - k)})` : hexA(eyeColor, 0.55 * (1 - k));
-      g.lineWidth = i === 0 ? 4 : 2.5;
-      g.beginPath();
-      g.arc(25, cy, r - i * 8, a0 * D, lerp(a0, a1, ease(Math.min(1, k * 1.5))) * D, a1 < a0);
-      g.stroke();
+    for (let i = 0; i < 3; i++) {
+      g.strokeStyle = hexA('#140a16', 0.8 * (1 - k)); g.lineWidth = 8;
+      g.beginPath(); g.arc(25, cy, r - i * 10, a0 * D, end, a1 < a0); g.stroke();
+      g.strokeStyle = i === 0 ? `rgba(255,255,255,${0.95 * (1 - k)})` : hexA(eyeColor, 0.85 * (1 - k)); g.lineWidth = 4;
+      g.beginPath(); g.arc(25, cy, r - i * 10, a0 * D, end, a1 < a0); g.stroke();
     }
     g.restore();
   }
@@ -1007,17 +947,18 @@ function hexA(hex, a) {
 
 // ---------------- Projectiles, effects, HUD ----------------
 export function drawProjectile(g, pr, time) {
-  const glow = g.createRadialGradient(pr.x, pr.y, 2, pr.x, pr.y, 26);
-  glow.addColorStop(0, 'rgba(180,255,120,0.9)');
+  const glow = g.createRadialGradient(pr.x, pr.y, 2, pr.x, pr.y, 28);
+  glow.addColorStop(0, 'rgba(180,255,120,0.55)');
   glow.addColorStop(1, 'rgba(60,160,40,0)');
   g.fillStyle = glow;
-  g.beginPath(); g.arc(pr.x, pr.y, 26, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#d8ff9a';
-  g.beginPath(); g.arc(pr.x + Math.sin(time * 40) * 1.5, pr.y, 8, 0, Math.PI * 2); g.fill();
-  for (let i = 1; i < 5; i++) {
-    g.fillStyle = `rgba(150,230,90,${0.4 - i * 0.08})`;
-    g.beginPath(); g.arc(pr.x - pr.vx * 0.02 * i, pr.y + Math.sin(time * 20 + i) * 3, 7 - i, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(pr.x, pr.y, 28, 0, Math.PI * 2); g.fill();
+  for (let i = 1; i < 4; i++) {
+    inked(g, ellipsePath(g, pr.x - pr.vx * 0.024 * i, pr.y + Math.sin(time * 20 + i) * 3, 6 - i * 1.4, 5 - i * 1.2), '#8fe05a', 3);
   }
+  const wob = Math.sin(time * 30) * 1.2;
+  inked(g, ellipsePath(g, pr.x, pr.y, 10 + wob, 9 - wob), '#b6f26e');
+  g.fillStyle = '#e8ffd0';
+  g.beginPath(); g.ellipse(pr.x - 3, pr.y - 3, 3.2, 2.2, -0.5, 0, Math.PI * 2); g.fill();
 }
 
 export function drawShadow(g, f) {
@@ -1043,6 +984,8 @@ export function drawParticles(g, parts) {
         g.lineTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr);
       }
       g.closePath();
+      g.strokeStyle = OL; g.lineWidth = 4; g.lineJoin = 'round';
+      g.stroke();
       g.fill();
     } else if (p.kind === 'ring') {
       g.strokeStyle = p.color; g.lineWidth = 3;
@@ -1056,8 +999,8 @@ export function drawParticles(g, parts) {
 }
 
 function bar(g, x, y, w, h, frac, shown, color, flip) {
-  g.fillStyle = 'rgba(0,0,0,0.6)';
-  g.fillRect(x - 2, y - 2, w + 4, h + 4);
+  g.fillStyle = OL;
+  g.beginPath(); g.roundRect(x - 4, y - 4, w + 8, h + 8, 6); g.fill();
   g.fillStyle = '#3a0d14';
   g.fillRect(x, y, w, h);
   // Lagging white "damage" segment.
