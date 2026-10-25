@@ -25,6 +25,16 @@ export const ASWANG_MOVES = {
   grab:   { startup: 0.13, active: 0.09, recovery: 0.46, dmg: 11, reach: [0, 74],  y: [-130, -20], grab: true, knock: 280, hitstun: 0.6, knockdown: true, sound: 'hiss' },
 };
 
+// The Aswang's flying upper half after it transforms into a manananggal.
+// Positions are measured from the torn waist (the fighter's y while flying).
+export const MANANANGGAL_MOVES = {
+  swipe:    { startup: 0.15, active: 0.1,  recovery: 0.26, dmg: 8,  reach: [5, 88],  y: [-75, 45],  knock: 200, hitstun: 0.32, blockstun: 0.2, sound: 'heavySwing' },
+  dive:     { startup: 0.26, active: 0.36, recovery: 0.5,  dmg: 12, reach: [0, 76],  y: [-60, 40],  knock: 340, hitstun: 0.45, blockstun: 0.25, lunge: 560, dive: 430, knockdown: true, sound: 'hiss' },
+  spitDown: { startup: 0.28, active: 0.05, recovery: 0.34, dmg: 7,  projectile: true, sound: 'spit' },
+};
+export const FLY_MIN = GROUND - 230;   // highest the flier can go
+export const FLY_MAX = GROUND - 45;    // lowest (skimming the ground)
+
 export class Fighter {
   constructor(kind, { maxHp, walkSpeed, moves }) {
     this.kind = kind;
@@ -55,9 +65,23 @@ export class Fighter {
     this.events = [];
     this.flash = 0;
     this.trail = [];
+    this.flying = false;
+    this.flyVx = 0;
+    this.flyVy = 0;
   }
 
-  get airborne() { return this.y < GROUND - 0.5; }
+  // Take to the air as a manananggal: no gravity, flying moves.
+  takeFlight(moves) {
+    this.flying = true;
+    this.moves = moves;
+    this.move = null;
+    this.vx = this.vy = this.flyVx = this.flyVy = 0;
+    this.knockdown = false;
+    this.setState('idle');
+  }
+
+  // A flier counts as "grounded" for game logic: it can act freely in the air.
+  get airborne() { return !this.flying && this.y < GROUND - 0.5; }
   get phase() {
     if (this.state !== 'attack') return '';
     const m = this.move;
@@ -137,6 +161,7 @@ export class Fighter {
   }
 
   hurtbox() {
+    if (this.flying) return { x: this.x - 26, y: this.y - 82, w: 52, h: 88 };
     const h = this.state === 'down' || this.state === 'ko' ? 40 : this.crouching ? 78 : this.state === 'guard' ? 105 : 118;
     return { x: this.x - 24, y: this.y - h, w: 48, h };
   }
@@ -147,6 +172,13 @@ export class Fighter {
     this.facing = -dir;
     this.vx = dir * m.knock;
     this.knockdown = !!m.knockdown || wasAirborne || this.hp <= 0;
+    if (this.flying) {
+      // Fliers reel back in the air instead of being knocked down, until KO,
+      // when the torso drops out of the sky.
+      this.vy = -140;
+      this.knockdown = false;
+      if (this.hp <= 0) { this.flying = false; this.knockdown = true; }
+    }
     if (this.knockdown) this.vy = -380;
     this.stun = m.hitstun;
     this.move = null;
@@ -170,6 +202,7 @@ export class Fighter {
     switch (this.state) {
       case 'idle':
       case 'walk':
+        if (this.flying) { this.vx = this.flyVx; this.vy = this.flyVy; break; }
         this.vx = this.walkDir * this.walkSpeed;
         break;
       case 'guard':
@@ -187,6 +220,13 @@ export class Fighter {
           if (m.projectile) this.events.push({ type: 'projectile', move: this.moveName });
           if (m.lunge) this.vx = this.facing * m.lunge;
           if (m.hop) this.vy = -m.hop;
+          if (m.dive) this.vy = m.dive;
+        }
+        if (this.flying) {
+          // Rear up during a dive's wind-up, swoop down while active, climb back after.
+          if (ph === 'startup') { this.vx = 0; this.vy = m.dive ? -90 : 0; }
+          else if (ph === 'recovery') { this.vx *= Math.pow(0.05, dt); this.vy = m.dive ? -230 : 0; }
+          else if (!m.dive) this.vy = 0;
         }
         if (m.lunge && ph !== 'startup') this.vx *= Math.pow(0.01, dt);
         if (m.air) {
@@ -198,7 +238,7 @@ export class Fighter {
           }
           break;
         }
-        if (!this.airborne && !m.lunge) this.vx *= Math.pow(0.001, dt);
+        if (!this.airborne && !m.lunge && !this.flying) this.vx *= Math.pow(0.001, dt);
         if (this.t >= m.startup + m.active + m.recovery) {
           if (!this.hasHit) this.events.push({ type: 'whiff', move: this.moveName });
           this.move = null;
@@ -213,6 +253,7 @@ export class Fighter {
       case 'hurt':
       case 'blockstun':
         this.vx *= Math.pow(0.02, dt);
+        if (this.flying) this.vy *= Math.pow(0.05, dt);
         if (this.t >= this.stun && !(this.knockdown && this.state === 'hurt' && this.airborne)) {
           if (this.state === 'hurt' && this.knockdown) { this.setState('down'); this.events.push({ type: 'down' }); }
           else this.setState('idle');
@@ -230,7 +271,14 @@ export class Fighter {
         break;
     }
 
-    // Physics.
+    // Physics. Fliers ignore gravity and stay within their flight band.
+    if (this.flying) {
+      this.x += this.vx * dt;
+      this.y = Math.max(FLY_MIN, Math.min(FLY_MAX, this.y + this.vy * dt));
+      if (this.x < LEFT_WALL) { this.x = LEFT_WALL; if (this.vx < 0) this.vx = 0; }
+      if (this.x > RIGHT_WALL) { this.x = RIGHT_WALL; if (this.vx > 0) this.vx = 0; }
+      return;
+    }
     if (this.airborne || this.vy < 0) this.vy += GRAVITY * dt;
     this.x += this.vx * dt;
     this.y += this.vy * dt;

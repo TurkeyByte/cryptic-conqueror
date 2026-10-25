@@ -81,6 +81,13 @@ export const sfx = {
   jump: () => tone(300, 0.1, { type: 'sine', vol: 0.12, slide: 1.6 }),
   dash: () => noise(0.15, { vol: 0.15, freq: 1200, sweep: 0.5 }),
   thud: () => tone(70, 0.3, { type: 'sine', vol: 0.5, slide: 0.5 }),
+  // Tearing, shrieking split into the manananggal.
+  transform: () => {
+    noise(0.9, { vol: 0.35, freq: 300, sweep: 6, q: 0.6 });
+    tone(180, 1.0, { type: 'sawtooth', vol: 0.12, slide: 3.2 });
+    tone(900, 0.8, { type: 'square', vol: 0.05, slide: 1.6, delay: 0.25 });
+    noise(0.5, { vol: 0.25, freq: 5000, q: 0.4, type: 'highpass', sweep: 0.5 });
+  },
   adapt: () => { tone(220, 0.5, { type: 'sawtooth', vol: 0.05, slide: 0.5 }); tone(330, 0.6, { type: 'sine', vol: 0.12, slide: 0.7, delay: 0.05 }); },
   roundStart: () => [392, 440, 523, 587, 523].forEach((f, i) => gong(f, i * 0.16)),
   win: () => [523, 587, 659, 784, 880, 1046].forEach((f, i) => gong(f, i * 0.13, 0.18)),

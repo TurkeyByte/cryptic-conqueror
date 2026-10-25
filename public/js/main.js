@@ -1,4 +1,4 @@
-import { Fighter, PLAYER_MOVES, ASWANG_MOVES, GROUND, overlap } from './fighter.js';
+import { Fighter, PLAYER_MOVES, ASWANG_MOVES, MANANANGGAL_MOVES, GROUND, overlap } from './fighter.js';
 import { Input } from './input.js';
 import { AswangBrain } from './brain.js';
 import { Observer } from './observer.js';
@@ -7,9 +7,13 @@ import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
   drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog,
+  drawManananggal, drawLegs,
 } from './render.js';
 
 const ROUND_TIME = 60;
+const TRANSFORM_AT = 0.4;   // the Aswang splits into a manananggal below this much health
+const TRANSFORM_TIME = 1.8; // length of the transformation moment
+const LEG_DAMAGE = 1.5;     // hits on the abandoned legs hurt it this much more
 const ROUNDS_TO_WIN = 2;
 
 const canvas = document.getElementById('game');
@@ -78,6 +82,7 @@ function applyPlan(s) {
 
 const telemetry = () => observer.telemetry({
   round: game.round, roundTime: game.timer, player, aswang, score: game.score, intent: brain.intent, focus: brain.focus,
+  form: aswang.form || 'aswang',
 });
 
 // ---------------- Match flow ----------------
@@ -97,6 +102,10 @@ function startMatch() {
 function startRound() {
   player.reset(300, 1);
   aswang.reset(660, -1);
+  aswang.moves = ASWANG_MOVES;
+  aswang.form = 'aswang';
+  game.legs = null;
+  game.cutscene = null;
   brain.reset();
   game.timer = ROUND_TIME;
   game.projectiles = [];
@@ -143,6 +152,61 @@ function endMatch() {
   $('over').hidden = false;
 }
 
+// ---------------- Manananggal ----------------
+// Legend: the manananggal's upper body tears away and flies on bat wings,
+// leaving its legs behind. Here that happens once per round at low health.
+function startTransformation() {
+  game.legs = { x: aswang.x, facing: aswang.facing, flash: 0 };
+  aswang.form = 'manananggal';
+  aswang.takeFlight(MANANANGGAL_MOVES);
+  aswang.y = GROUND - 72; // the torn waist, where the torso starts rising from
+  game.cutscene = { t: 0, fromY: aswang.y };
+  game.buffer = null;
+  game.flash = 0.35;
+  game.shake = 0.6;
+  game.banner = { text: 'MANANANGGAL!', sub: 'It splits in two. Strike the legs it left behind!', color: '#c084fc', t: 1.1 };
+  game.thought = null;
+  sfx.transform();
+  for (let i = 0; i < 3; i++) sparks(aswang.x, GROUND - 72, '#c084fc', 10, 260);
+  // Ask Nemotron for a plan for the new form right away.
+  strategist.requestNow(telemetry());
+}
+
+function updateCutscene(dt) {
+  const c = game.cutscene;
+  c.t += dt;
+  const k = Math.min(1, c.t / TRANSFORM_TIME);
+  const e = k * k * (3 - 2 * k);
+  aswang.y = c.fromY + (GROUND - 150 - c.fromY) * e;
+  aswang.x += Math.sin(c.t * 60) * (1 - k) * 0.8; // trembling as it tears free
+  aswang.anim += dt;
+  player.anim += dt;
+  if (c.t > 0.4 && c.t - dt <= 0.4) { game.shake = 0.4; sfx.thud(); }
+  if (k >= 1) game.cutscene = null;
+}
+
+// Player attacks can hit the abandoned legs, which badly hurts the flier.
+function hitLegs() {
+  const legs = game.legs;
+  const hb = player.hitbox();
+  if (!legs || !hb || aswang.state === 'ko' || aswang.hp <= 0) return;
+  const box = { x: legs.x - 22, y: GROUND - 78, w: 44, h: 78 };
+  if (!overlap(hb, box)) return;
+  player.hasHit = true;
+  const m = player.move;
+  const dmg = Math.round(m.dmg * LEG_DAMAGE);
+  legs.flash = 0.18;
+  game.hitstop = 0.08;
+  game.shake = 0.2;
+  sparks(legs.x, GROUND - 50, '#f6efdc', 16);
+  sfx.stickHit();
+  sfx.hiss();
+  // The flier feels it: it reels wherever it is.
+  aswang.takeHit({ ...m, dmg, knock: 60, hitstun: 0.3, knockdown: false }, Math.sign(aswang.x - legs.x) || 1, false);
+  observer.contact('player', player.moveName, 'hit', dmg);
+  observer.legsHit();
+}
+
 // ---------------- Effects ----------------
 function sparks(x, y, color, n = 12, speed = 380) {
   for (let i = 0; i < n; i++) {
@@ -153,8 +217,8 @@ function sparks(x, y, color, n = 12, speed = 380) {
   game.particles.push({ kind: 'star', x, y, vx: 0, vy: 0, r: n > 12 ? 46 : 30, rot: Math.random(), t: 0.13, life: 0.13, color: '#fffbe8' });
 }
 // Green bile splattering off a block.
-function splat(x, y) {
-  for (let i = 0; i < 14; i++) {
+function splat(x, y, n = 14) {
+  for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, sp = 80 + Math.random() * 220;
     game.particles.push({ kind: 'dot', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, t: 0.45, life: 0.45, r: 2.5 + Math.random() * 3.5, color: '#b6f26e' });
   }
@@ -203,7 +267,9 @@ function resolve(att, def, who) {
 function updateProjectiles(dt) {
   for (const pr of game.projectiles) {
     pr.x += pr.vx * dt;
+    pr.y += (pr.vy || 0) * dt;
     pr.life -= dt;
+    if (pr.y > GROUND - 6) { pr.life = 0; splat(pr.x, GROUND - 6, 8); continue; }
     const box = { x: pr.x - 10, y: pr.y - 10, w: 20, h: 20 };
     const dir = Math.sign(pr.vx);
     const guarding = (player.state === 'guard' || player.state === 'blockstun') && player.facing === -dir;
@@ -241,7 +307,14 @@ function handleEvents(f, isPlayer) {
     if (e.type === 'land') dust(f.x, 5);
     if (e.type === 'down') { sfx.thud(); dust(f.x, 10); game.shake = Math.max(game.shake, 0.15); }
     if (e.type === 'projectile') {
-      game.projectiles.push({ x: f.x + f.facing * 40, y: f.y - 100, vx: f.facing * 400, life: 3 });
+      if (f.flying) {
+        // Aimed down at the player from the air.
+        const sx = f.x + f.facing * 26, sy = f.y - 40;
+        const dx = player.x - sx, dy = player.y - 60 - sy, d = Math.hypot(dx, dy) || 1;
+        game.projectiles.push({ x: sx, y: sy, vx: (dx / d) * 380, vy: (dy / d) * 380, life: 3 });
+      } else {
+        game.projectiles.push({ x: f.x + f.facing * 40, y: f.y - 100, vx: f.facing * 400, life: 3 });
+      }
     }
   }
   f.events.length = 0;
@@ -326,6 +399,7 @@ function update(dt) {
     return;
   }
 
+  if (game.cutscene) { updateCutscene(dt); return; }
   if (game.hitstop > 0) { game.hitstop -= dt; return; }
   if (game.slowmo > 0) { game.slowmo -= dt; dt *= 0.35; }
 
@@ -336,7 +410,7 @@ function update(dt) {
     if (game.buffer && (game.buffer.t -= dt) <= 0) game.buffer = null;
     controlPlayer();
     faceEachOther();
-    brain.update(dt, aswang, player, game.projectiles);
+    brain.update(dt, aswang, player, game.projectiles, game.legs);
   } else {
     player.walk(0); aswang.walk(0);
     player.guard(false); aswang.guard(false);
@@ -347,9 +421,12 @@ function update(dt) {
   separate();
   if (game.mode === 'fight') {
     resolve(player, aswang, 'player');
+    hitLegs();
     resolve(aswang, player, 'aswang');
     updateProjectiles(dt);
+    if (!game.legs && aswang.hp > 0 && aswang.hp <= aswang.maxHp * TRANSFORM_AT) startTransformation();
   }
+  if (game.legs) game.legs.flash = Math.max(0, game.legs.flash - dt);
   handleEvents(player, true);
   handleEvents(aswang, false);
 
@@ -422,9 +499,12 @@ function draw() {
   drawArena(g, game.time, camX);
   drawShadow(g, player);
   drawShadow(g, aswang);
+  if (game.legs) drawLegs(g, game.legs, game.time);
   const eye = INTENT_COLORS[brain.intent];
   const aura = game.thought?.changed ? Math.max(0, (game.thought.t - (game.thought.life - 1.4)) / 1.4) : 0;
-  const paintA = (c) => drawAswang(c, aswang, game.time, eye, aura);
+  const paintA = aswang.form === 'manananggal'
+    ? (c) => drawManananggal(c, aswang, game.time, eye, aura, game.cutscene ? Math.min(1, game.cutscene.t / TRANSFORM_TIME) : 1)
+    : (c) => drawAswang(c, aswang, game.time, eye, aura);
   const paintP = (c) => drawPlayer(c, player, game.time);
   // Draw whoever is attacking on top.
   if (aswang.state === 'attack') { drawFighter(player, paintP); drawFighter(aswang, paintA); }
@@ -439,7 +519,7 @@ function draw() {
   }
 
   if (game.mode !== 'title') {
-    drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus });
+    drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus, aswangName: aswang.form === 'manananggal' ? 'MANANANGGAL' : 'ASWANG' });
     if (game.mode === 'fight') drawThought(g, aswang, game.thought);
     if ((game.mode === 'intro' || game.mode === 'fight') && game.hintT > 0) drawControlsHint(g, Math.min(1, game.hintT / 2));
   }

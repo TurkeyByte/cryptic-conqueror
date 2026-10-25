@@ -57,7 +57,9 @@ export class Strategist {
 
   // Ask immediately (e.g. between rounds), regardless of the timer.
   requestNow(telemetry) {
-    if (this.inflight || this.status === 'offline' || this.status === 'checking') return;
+    if (this.status === 'offline' || this.status === 'checking') return;
+    // If a request is already out, ask again as soon as it returns.
+    if (this.inflight) { this.timer = 0; return; }
     this.request(telemetry);
   }
 

@@ -14,9 +14,17 @@ The **Aswang Mind** panel next to the arena shows that loop as it runs: **OBSERV
 
 ## Roadmap
 
-- **Now (hackathon build):** Dakila vs. the Aswang, with Nemotron-driven adaptation.
-- **Stretch:** in the final round the Aswang transforms into a **manananggal** and takes the fight to the air.
+- **Now (hackathon build):** Dakila vs. the Aswang, with Nemotron-driven adaptation, including the **manananggal** transformation (below).
 - **Later:** more world-tour stops, ending with a shapeshifting **kitsune** final boss that fights using the style it learned from you.
+
+## The manananggal transformation
+
+In Philippine folklore the manananggal is a kind of aswang whose upper body tears away from its legs and flies on bat wings. Here, once per round when the Aswang drops below 40% health, it does exactly that:
+
+- The screen shakes and flashes, a **MANANANGGAL!** banner appears, and the torso rises into the air on bat wings (smoke, no gore). Its legs stay standing where it split.
+- In flight it **swipes**, **dives**, and **spits bile down** at the player. Hovering low, it can be hit with normal attacks; up high, only jump attacks reach.
+- **The legend's weak spot:** hitting the abandoned legs deals 1.5× damage to the flier, so the player has to choose between fighting it and going for the legs while it attacks.
+- Nemotron is told about the new form (`aswangForm`, `hitsOnAbandonedLegs` in the telemetry) and is asked for a new plan the moment it transforms. Its intents map onto flight: aggressive intents hover low and dive, defensive ones hover high and spit, and counter/bait hover between the player and its legs to protect them (`public/js/brain.js`, `flyUpdate`).
 
 ## Quick start
 

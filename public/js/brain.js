@@ -2,6 +2,8 @@
 // what it sees using a tuning profile. Nemotron only chooses WHICH profile
 // (intent) and which counter-measures (focus) are active; it never presses buttons.
 
+import { GROUND as GROUND_Y } from './fighter.js';
+
 // Per-decision probabilities and spacing for each tactical intent.
 const BASE = {
   think: 0.24,      // seconds between decisions (reaction time)
@@ -68,6 +70,48 @@ export class AswangBrain {
     this.p = buildProfile(intent, focus);
   }
 
+  // Manananggal form: the same intents and focus, translated to flight.
+  // Where to hover is decided every frame; what to do is decided on think ticks.
+  flyUpdate(dt, me, foe, legs) {
+    const p = this.p;
+    const high = ['ZONE', 'DEFENSIVE', 'RETREAT'].includes(this.intent) || this.focus.includes('KEEP_DISTANCE');
+    const low = ['AGGRESSIVE', 'PRESSURE'].includes(this.intent) || this.focus.includes('CLOSE_DISTANCE');
+    const guardsLegs = this.intent === 'COUNTER' || this.intent === 'BAIT';
+    const toward = Math.sign(foe.x - me.x) || me.facing;
+    const dist = Math.abs(foe.x - me.x);
+
+    // Hover target: spacing from the profile, height from the intent, and a
+    // lazy bob so it never hangs perfectly still.
+    this.bob = (this.bob || 0) + dt;
+    const hoverY = (high ? GROUND_Y - 195 : low ? GROUND_Y - 95 : GROUND_Y - 140) + Math.sin(this.bob * 2.2) * 14;
+    let targetX = foe.x - toward * Math.max(70, Math.min(320, p.prefDist));
+    // Counter/bait: stay between the player and its legs.
+    if (guardsLegs && legs) targetX = (legs.x + foe.x) / 2;
+    // Legs under attack: rush to them.
+    if (legs && Math.abs(foe.x - legs.x) < 110) targetX = foe.x - toward * 60;
+    const speed = 210 * p.walkSpeed;
+    me.flyVx = Math.max(-speed, Math.min(speed, (targetX - me.x) * 3));
+    me.flyVy = Math.max(-170, Math.min(170, (hoverY - me.y) * 3));
+
+    if (me.state === 'attack' && me.t < dt * 1.5) this.attackCd = 0.35 + (1 - p.attack) * 0.6;
+    if (!me.free || this.clock > 0) return;
+    this.clock = p.think * (0.75 + Math.random() * 0.5);
+    const roll = (c) => Math.random() < c;
+    const below = foe.y - me.y; // how far below the flier the player's feet are
+
+    // Swat jumpers out of the air.
+    if (foe.airborne && dist < 140 && roll(Math.max(p.antiAir, 0.25))) { me.attack('swipe'); return; }
+    // Punish whiffs and dashes with a dive or swipe.
+    if ((foe.recovering || foe.state === 'land') && dist < 260 && roll(p.punish)) { me.attack(dist < 95 && below < 150 ? 'swipe' : 'dive'); return; }
+    if (foe.state === 'dash' && dist < 260 && roll(p.punishDash)) { me.attack('dive'); return; }
+    if (this.attackCd > 0) return;
+    if (dist < 95 && below < 150 && roll(p.attack)) { me.attack('swipe'); return; }
+    if (dist >= 100 && dist < 340 && roll(p.attack * Math.max(p.pounce, 0.3) * 1.6)) { me.attack('dive'); return; }
+    // Rain bile on a player who keeps away or loiters near its legs.
+    const nearLegs = legs && Math.abs(foe.x - legs.x) < 140;
+    if ((dist >= 150 || nearLegs) && this.spitCd <= 0 && roll(Math.max(p.spit, nearLegs ? 0.45 : 0.3))) { me.attack('spitDown'); this.spitCd = 1.1; }
+  }
+
   // Blocking a hit while countering sets up an immediate riposte.
   onBlocked() {
     this.riposte = this.intent === 'COUNTER' || this.intent === 'DEFENSIVE';
@@ -75,13 +119,14 @@ export class AswangBrain {
   }
 
   // Called every frame.
-  update(dt, me, foe, projectiles) {
+  update(dt, me, foe, projectiles, legs) {
     const p = this.p;
     this.clock -= dt;
     this.spitCd = Math.max(0, this.spitCd - dt);
     this.feintT = Math.max(0, this.feintT - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
     me.walkSpeed = 190 * p.walkSpeed;
+    if (me.flying) { this.flyUpdate(dt, me, foe, legs); return; }
 
     if (this.guardT > 0) {
       this.guardT -= dt;

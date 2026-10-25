@@ -24,6 +24,7 @@ function emptyWindow() {
     close: 0, mid: 0, far: 0,
     advancing: 0, retreating: 0, still: 0,
     cornered: 0,
+    legsHits: 0,
   };
 }
 
@@ -89,6 +90,11 @@ export class Observer {
     });
   }
 
+  // Hits on the manananggal's abandoned legs.
+  legsHit() {
+    this.each((w) => { w.legsHits++; });
+  }
+
   // Record how the plan that just ended performed, so Nemotron can judge it.
   closePlan(intent, focus) {
     const w = this.w;
@@ -118,12 +124,14 @@ export class Observer {
       rangePct: { close: Math.round((w.close / s) * 100), mid: Math.round((w.mid / s) * 100), far: Math.round((w.far / s) * 100) },
       movementPct: { advancing: Math.round((w.advancing / s) * 100), retreating: Math.round((w.retreating / s) * 100), still: Math.round((w.still / s) * 100) },
       corneredPct: Math.round((w.cornered / s) * 100),
+      hitsOnAbandonedLegs: w.legsHits,
     };
   }
 
-  telemetry({ round, roundTime, player, aswang, score, intent, focus }) {
+  telemetry({ round, roundTime, player, aswang, score, intent, focus, form }) {
     return {
       round,
+      aswangForm: form,
       roundTimeLeft: Math.round(roundTime),
       roundsWon: score,
       hp: { player: r2(player.hp / player.maxHp), aswang: r2(aswang.hp / aswang.maxHp) },

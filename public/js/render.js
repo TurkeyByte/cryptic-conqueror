@@ -716,7 +716,9 @@ function aswangPose(f) {
   const s = f.state;
   if (s === 'attack') {
     const { ph, k } = progress(f);
-    const [a, b] = { claw: ['clawA', 'clawB'], pounce: ['pouA', 'pouB'], rising: ['risA', 'risB'], spit: ['spitA', 'spitB'], grab: ['grabA', 'grabB'] }[f.moveName].map((n) => A[n]);
+    const [a, b] = { claw: ['clawA', 'clawB'], pounce: ['pouA', 'pouB'], rising: ['risA', 'risB'], spit: ['spitA', 'spitB'], grab: ['grabA', 'grabB'],
+      // Manananggal moves reuse the closest Aswang poses.
+      swipe: ['clawA', 'clawB'], dive: ['pouA', 'pouB'], spitDown: ['spitA', 'spitB'] }[f.moveName].map((n) => A[n]);
     if (ph === 'startup') return lerpPose(A.idle, a, ease(k));
     if (ph === 'active') return lerpPose(a, b, ease(Math.min(1, k * 2)));
     return lerpPose(b, A.idle, ease(k));
@@ -753,6 +755,98 @@ function footClaws(g, x, y) {
   for (const dx of [2, 8, 14]) noodleFill(g, toe(dx), 2.5, '#f6efdc');
 }
 
+// Aura that flares in the intent color when Nemotron hands it a new plan.
+function auraGlow(g, cx, cy, eyeColor, aura, time) {
+  if (aura <= 0) return;
+  const pulse = 0.75 + 0.25 * Math.sin(time * 14);
+  const r = 130 + (1 - Math.min(1, aura)) * 50;
+  const ag = g.createRadialGradient(cx, cy, 10, cx, cy, r);
+  ag.addColorStop(0, hexA(eyeColor, 0.6 * Math.min(1, aura) * pulse));
+  ag.addColorStop(0.55, hexA(eyeColor, 0.22 * Math.min(1, aura) * pulse));
+  ag.addColorStop(1, hexA(eyeColor, 0));
+  g.fillStyle = ag;
+  g.fillRect(cx - r, cy - r, r * 2, r * 2);
+}
+
+// The Aswang's head, shared by both forms: long jaw, hollow sockets with
+// glowing pupils, angry brows, fanged grin, and a tongue that lashes out on spits.
+const ASW = { HEAD: 21, SKIN: '#9fb487', SKIN_D: '#7a8c66', ROBE: '#3a2450', ROBE_D: '#2a1840', HAIR: '#120a1a' };
+function aswangHead(g, f, time, eyeColor, aura, hx, hy, headA) {
+  const { HEAD, SKIN, SKIN_D, HAIR } = ASW;
+  g.save();
+  g.translate(hx, hy);
+  g.rotate(headA * 0.5);
+  const attacking = f.state === 'attack' && f.phase !== 'recovery';
+  const hurt = f.state === 'hurt' || f.state === 'down' || f.state === 'ko';
+  const jaw = attacking ? 9 : 3;
+  inked(g, ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12), SKIN);
+  g.save(); ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12)(); g.clip();
+  g.fillStyle = SKIN_D; g.beginPath(); g.arc(-14, 8, 16, 0, Math.PI * 2); g.fill();
+  g.restore();
+  // Hair fringe.
+  inked(g, () => { g.beginPath(); g.moveTo(-19, 2); g.quadraticCurveTo(-16, -24, 6, -22); g.lineTo(2, -15); g.lineTo(-4, -19); g.lineTo(-8, -11); g.lineTo(-12, -15); g.lineTo(-14, 0); g.closePath(); }, HAIR);
+  // Eyes: hollow black sockets with tiny pupils glowing in the intent color
+  // (X eyes when hit), under separate angry brows.
+  g.fillStyle = '#07030a';
+  g.beginPath(); g.ellipse(9.5, -3.5, 7, 6, -0.25, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(-2.5, -3.5, 4.8, 4.4, -0.25, 0, Math.PI * 2); g.fill();
+  g.shadowColor = eyeColor; g.shadowBlur = 14 + aura * 10;
+  if (hurt) {
+    g.strokeStyle = eyeColor; g.lineWidth = 2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(7, -6); g.lineTo(13, -1); g.moveTo(7, -1); g.lineTo(13, -6); g.stroke();
+    g.beginPath(); g.moveTo(-4.5, -5.5); g.lineTo(-0.5, -1.5); g.moveTo(-4.5, -1.5); g.lineTo(-0.5, -5.5); g.stroke();
+    g.shadowBlur = 0;
+  } else {
+    const pulse = 1 + 0.15 * Math.sin(time * 9) * Math.sin(time * 3.1) + aura * 0.4;
+    g.fillStyle = eyeColor;
+    g.beginPath(); g.arc(11, -3, 2.2 * pulse, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(-1.5, -3, 1.5 * pulse, 0, Math.PI * 2); g.fill();
+    g.shadowBlur = 0;
+    g.fillStyle = '#fffbe8';
+    g.beginPath(); g.arc(11, -3, 0.9, 0, Math.PI * 2); g.fill();
+  }
+  g.strokeStyle = OL; g.lineWidth = 3.6; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(3, -12.5); g.lineTo(16.5, -9.5); g.stroke();
+  g.beginPath(); g.moveTo(-7.5, -10); g.lineTo(0.5, -10.5); g.stroke();
+  // Wide grin full of fangs.
+  inked(g, () => { g.beginPath(); g.moveTo(-6, 9); g.quadraticCurveTo(6, 13, 19, 6); g.quadraticCurveTo(10, 14 + jaw, -4, 12 + jaw * 0.5); g.closePath(); }, '#3a0a14', 3);
+  g.fillStyle = '#fff8e8';
+  for (let i = 0; i < 6; i++) {
+    const tx = -3 + i * 3.6, ty = 9.5 + Math.sin((i / 5) * Math.PI) * 1.5 - (i / 5) * 3.5;
+    g.beginPath(); g.moveTo(tx, ty); g.lineTo(tx + 1.6, ty + 4 + (i % 2) * 1.5); g.lineTo(tx + 3.2, ty); g.fill();
+  }
+  // Its long tongue lashes out when spitting.
+  if (f.state === 'attack' && (f.moveName === 'spit' || f.moveName === 'spitDown')) {
+    const { ph, k } = progress(f);
+    const len = ph === 'startup' ? k * 12 : ph === 'active' ? 38 : 38 * (1 - k);
+    noodle(g, [[12, 11], [12 + len * 0.5, 17 + Math.sin(time * 30) * 3], [12 + len, 13]], 4, '#c43a6a');
+  }
+  g.restore();
+
+}
+
+// Claw slash arcs while an attack is active, inked and tinted by the intent.
+function slashArcs(g, f, eyeColor) {
+  if (f.state === 'attack' && f.phase === 'active' && f.move?.reach) {
+    const { k } = progress(f);
+    g.save();
+    g.translate(f.x, f.y);
+    g.scale(f.facing, 1);
+    const cy = f.flying ? (f.moveName === 'dive' ? -10 : -25) : f.moveName === 'rising' ? -170 : f.moveName === 'pounce' ? -55 : -95;
+    const r = f.moveName === 'rising' ? 84 : 66;
+    const [a0, a1] = f.moveName === 'rising' ? [60, -100] : [-80, 70];
+    const end = lerp(a0, a1, ease(Math.min(1, k * 1.5))) * D;
+    g.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      g.strokeStyle = hexA('#140a16', 0.8 * (1 - k)); g.lineWidth = 8;
+      g.beginPath(); g.arc(25, cy, r - i * 10, a0 * D, end, a1 < a0); g.stroke();
+      g.strokeStyle = i === 0 ? `rgba(255,255,255,${0.95 * (1 - k)})` : hexA(eyeColor, 0.85 * (1 - k)); g.lineWidth = 4;
+      g.beginPath(); g.arc(25, cy, r - i * 10, a0 * D, end, a1 < a0); g.stroke();
+    }
+    g.restore();
+  }
+}
+
 // The Aswang as a goofy-creepy cartoon: huge head, glowing eyes in the
 // current intent's color, a fanged grin, noodly limbs and a tattered robe.
 export function drawAswang(g, f, time, eyeColor, aura = 0) {
@@ -760,17 +854,7 @@ export function drawAswang(g, f, time, eyeColor, aura = 0) {
   const THIGH = 36, SHIN = 38, TORSO = 48, UA = 34, FA = 32, HEAD = 21;
   const SKIN = '#9fb487', SKIN_D = '#7a8c66', ROBE = '#3a2450', ROBE_D = '#2a1840', HAIR = '#120a1a';
 
-  // Aura that flares in the intent color when Nemotron hands it a new plan.
-  if (aura > 0) {
-    const pulse = 0.75 + 0.25 * Math.sin(time * 14);
-    const r = 130 + (1 - Math.min(1, aura)) * 50;
-    const ag = g.createRadialGradient(f.x, f.y - 80, 10, f.x, f.y - 80, r);
-    ag.addColorStop(0, hexA(eyeColor, 0.6 * Math.min(1, aura) * pulse));
-    ag.addColorStop(0.55, hexA(eyeColor, 0.22 * Math.min(1, aura) * pulse));
-    ag.addColorStop(1, hexA(eyeColor, 0));
-    g.fillStyle = ag;
-    g.fillRect(f.x - r, f.y - 80 - r, r * 2, r * 2);
-  }
+  auraGlow(g, f.x, f.y - 80, eyeColor, aura, time);
   // Creeping shadow-smoke at its feet.
   for (let i = 0; i < 4; i++) {
     const sx0 = f.x + Math.sin(time * 1.3 + i * 1.7) * 26 - 30 + i * 18;
@@ -836,56 +920,7 @@ export function drawAswang(g, f, time, eyeColor, aura = 0) {
   inked(g, ellipsePath(g, fl[1][0], fl[1][1], 6, 6), SKIN, 4);
   footClaws(g, fl[2][0], fl[2][1]);
 
-  // Big head: long jaw, glowing eyes, fanged grin.
-  g.save();
-  g.translate(hx, hy);
-  g.rotate(headA * 0.5);
-  const attacking = f.state === 'attack' && f.phase !== 'recovery';
-  const hurt = f.state === 'hurt' || f.state === 'down' || f.state === 'ko';
-  const jaw = attacking ? 9 : 3;
-  inked(g, ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12), SKIN);
-  g.save(); ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12)(); g.clip();
-  g.fillStyle = SKIN_D; g.beginPath(); g.arc(-14, 8, 16, 0, Math.PI * 2); g.fill();
-  g.restore();
-  // Hair fringe.
-  inked(g, () => { g.beginPath(); g.moveTo(-19, 2); g.quadraticCurveTo(-16, -24, 6, -22); g.lineTo(2, -15); g.lineTo(-4, -19); g.lineTo(-8, -11); g.lineTo(-12, -15); g.lineTo(-14, 0); g.closePath(); }, HAIR);
-  // Eyes: hollow black sockets with tiny pupils glowing in the intent color
-  // (X eyes when hit), under separate angry brows.
-  g.fillStyle = '#07030a';
-  g.beginPath(); g.ellipse(9.5, -3.5, 7, 6, -0.25, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(-2.5, -3.5, 4.8, 4.4, -0.25, 0, Math.PI * 2); g.fill();
-  g.shadowColor = eyeColor; g.shadowBlur = 14 + aura * 10;
-  if (hurt) {
-    g.strokeStyle = eyeColor; g.lineWidth = 2; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(7, -6); g.lineTo(13, -1); g.moveTo(7, -1); g.lineTo(13, -6); g.stroke();
-    g.beginPath(); g.moveTo(-4.5, -5.5); g.lineTo(-0.5, -1.5); g.moveTo(-4.5, -1.5); g.lineTo(-0.5, -5.5); g.stroke();
-    g.shadowBlur = 0;
-  } else {
-    const pulse = 1 + 0.15 * Math.sin(time * 9) * Math.sin(time * 3.1) + aura * 0.4;
-    g.fillStyle = eyeColor;
-    g.beginPath(); g.arc(11, -3, 2.2 * pulse, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(-1.5, -3, 1.5 * pulse, 0, Math.PI * 2); g.fill();
-    g.shadowBlur = 0;
-    g.fillStyle = '#fffbe8';
-    g.beginPath(); g.arc(11, -3, 0.9, 0, Math.PI * 2); g.fill();
-  }
-  g.strokeStyle = OL; g.lineWidth = 3.6; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(3, -12.5); g.lineTo(16.5, -9.5); g.stroke();
-  g.beginPath(); g.moveTo(-7.5, -10); g.lineTo(0.5, -10.5); g.stroke();
-  // Wide grin full of fangs.
-  inked(g, () => { g.beginPath(); g.moveTo(-6, 9); g.quadraticCurveTo(6, 13, 19, 6); g.quadraticCurveTo(10, 14 + jaw, -4, 12 + jaw * 0.5); g.closePath(); }, '#3a0a14', 3);
-  g.fillStyle = '#fff8e8';
-  for (let i = 0; i < 6; i++) {
-    const tx = -3 + i * 3.6, ty = 9.5 + Math.sin((i / 5) * Math.PI) * 1.5 - (i / 5) * 3.5;
-    g.beginPath(); g.moveTo(tx, ty); g.lineTo(tx + 1.6, ty + 4 + (i % 2) * 1.5); g.lineTo(tx + 3.2, ty); g.fill();
-  }
-  // Its long tongue lashes out when spitting.
-  if (f.state === 'attack' && f.moveName === 'spit') {
-    const { ph, k } = progress(f);
-    const len = ph === 'startup' ? k * 12 : ph === 'active' ? 38 : 38 * (1 - k);
-    noodle(g, [[12, 11], [12 + len * 0.5, 17 + Math.sin(time * 30) * 3], [12 + len, 13]], 4, '#c43a6a');
-  }
-  g.restore();
+  aswangHead(g, f, time, eyeColor, aura, hx, hy, headA);
 
   const fa = joint(sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA);
   noodle(g, fa, 7, SKIN);
@@ -893,25 +928,7 @@ export function drawAswang(g, f, time, eyeColor, aura = 0) {
   claws(g, fa[2][0], fa[2][1], p.aF2 * D, SKIN);
   g.restore();
 
-  // Claw slash arcs while the attack is active, inked and tinted by the intent.
-  if (f.state === 'attack' && f.phase === 'active' && f.moveName !== 'spit') {
-    const { k } = progress(f);
-    g.save();
-    g.translate(f.x, f.y);
-    g.scale(f.facing, 1);
-    const cy = f.moveName === 'rising' ? -170 : f.moveName === 'pounce' ? -55 : -95;
-    const r = f.moveName === 'rising' ? 84 : 66;
-    const [a0, a1] = f.moveName === 'rising' ? [60, -100] : [-80, 70];
-    const end = lerp(a0, a1, ease(Math.min(1, k * 1.5))) * D;
-    g.lineCap = 'round';
-    for (let i = 0; i < 3; i++) {
-      g.strokeStyle = hexA('#140a16', 0.8 * (1 - k)); g.lineWidth = 8;
-      g.beginPath(); g.arc(25, cy, r - i * 10, a0 * D, end, a1 < a0); g.stroke();
-      g.strokeStyle = i === 0 ? `rgba(255,255,255,${0.95 * (1 - k)})` : hexA(eyeColor, 0.85 * (1 - k)); g.lineWidth = 4;
-      g.beginPath(); g.arc(25, cy, r - i * 10, a0 * D, end, a1 < a0); g.stroke();
-    }
-    g.restore();
-  }
+  slashArcs(g, f, eyeColor);
 }
 
 let smoke = null;
@@ -932,6 +949,154 @@ function smokeSprite() {
 function hexA(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`;
+}
+
+// ---------------- The Manananggal ----------------
+// One bat wing from the shoulder (local space, facing right): an arm bone,
+// three finger bones fanning back, and a scalloped membrane between them.
+function wing(g, x, y, flap, s, membrane, bone) {
+  const a0 = (-118 + flap * 34) * D;
+  const ex = x + Math.cos(a0) * 26 * s, ey = y + Math.sin(a0) * 26 * s;
+  const a1 = a0 - (38 - flap * 14) * D;
+  const wx = ex + Math.cos(a1) * 24 * s, wy = ey + Math.sin(a1) * 24 * s;
+  const tips = [[15, 42], [52, 50], [88, 40]].map(([da, len]) => {
+    const a = a1 - (da - flap * 12) * D;
+    return [wx + Math.cos(a) * len * s, wy + Math.sin(a) * len * s];
+  });
+  const attach = [x - 6, y + 26];
+  const scallop = (from, to) => {
+    const mx = (from[0] + to[0]) / 2, my = (from[1] + to[1]) / 2;
+    g.quadraticCurveTo(mx + (wx - mx) * 0.28, my + (wy - my) * 0.28, to[0], to[1]);
+  };
+  inked(g, () => {
+    g.beginPath();
+    g.moveTo(x, y); g.lineTo(ex, ey); g.lineTo(wx, wy); g.lineTo(tips[0][0], tips[0][1]);
+    scallop(tips[0], tips[1]); scallop(tips[1], tips[2]); scallop(tips[2], attach);
+    g.closePath();
+  }, membrane);
+  noodle(g, [[x, y], [ex, ey], [wx, wy]], 4, bone);
+  for (const t of tips) noodle(g, [[wx, wy], t], 2, bone);
+}
+
+// The flying upper half: torso torn at the waist (f.y), bat wings, the
+// Aswang's head and claws. `grow` (0..1) unfurls the wings during the split.
+export function drawManananggal(g, f, time, eyeColor, aura = 0, grow = 1) {
+  const p = smoothPose(f, aswangPose(f), time);
+  const TORSO = 46, UA = 34, FA = 32;
+  const { HEAD, SKIN, SKIN_D, ROBE, ROBE_D, HAIR } = ASW;
+  auraGlow(g, f.x, f.y - 40, eyeColor, aura, time);
+
+  g.save();
+  g.translate(f.x, f.y);
+  g.scale(f.facing, 1);
+  g.rotate(p.rot * D);
+  const lean = p.lean * 0.4 * D;
+  const nx = Math.sin(lean) * TORSO, ny = -Math.cos(lean) * TORSO;
+  const sx = nx - Math.sin(lean) * 6, sy = ny + Math.cos(lean) * 6;
+  const headA = lean + p.head * 0.6 * D;
+  const hx = nx + Math.sin(headA) * (HEAD + 2), hy = ny - Math.cos(headA) * (HEAD + 2);
+  const diving = f.state === 'attack' && f.moveName === 'dive' && f.phase === 'active';
+  const flap = f.state === 'ko' ? -0.6 : diving ? -0.9 : Math.sin(f.anim * 9);
+  const ws = (f.state === 'ko' ? 0.6 : 1) * (0.25 + 0.75 * grow);
+
+  // Dark smoke trailing from the torn waist (kept PG: no gore).
+  g.lineCap = 'round';
+  for (let i = 0; i < 4; i++) {
+    const sway = Math.sin(time * 4 + i * 1.3) * 8 - Math.max(-20, Math.min(20, f.vx * 0.03));
+    g.strokeStyle = `rgba(40,18,52,${0.75 - i * 0.14})`;
+    g.lineWidth = 10 - i * 2;
+    g.beginPath();
+    g.moveTo(-8 + i * 5, 2);
+    g.quadraticCurveTo(-12 + i * 6 + sway, 18 + i * 4, -20 + i * 4 + sway * 1.6, 34 + i * 8);
+    g.stroke();
+  }
+
+  // Back wing, hair, back arm.
+  wing(g, sx - 6, sy + 4, Math.sin(f.anim * 9 + 0.5) * (diving ? 0 : 1) + (diving ? -0.9 : 0), ws * 1.25, '#3b2257', SKIN_D);
+  inked(g, () => {
+    g.beginPath();
+    g.moveTo(hx + 8, hy - 18);
+    g.bezierCurveTo(hx - 26, hy - 30, hx - 44, hy + 4, hx - 40 + Math.sin(time * 2.4) * 6, hy + 58);
+    for (let i = 0; i < 5; i++) g.lineTo(hx - 40 + i * 7 + Math.sin(time * 3 + i) * 3, hy + 58 - (i % 2) * 12 - i * 3);
+    g.bezierCurveTo(hx - 14, hy + 36, hx - 12, hy + 16, hx - 2, hy + 6);
+    g.closePath();
+  }, HAIR);
+  const ba = joint(sx - 4, sy, p.aB1 * D, UA, p.aB2 * D, FA);
+  noodle(g, ba, 7, SKIN_D);
+  inked(g, ellipsePath(g, ba[1][0], ba[1][1], 5, 5), SKIN_D, 4);
+  claws(g, ba[2][0], ba[2][1], p.aB2 * D, SKIN_D);
+
+  // Torso: robe torn off raggedly at the waist, ribs showing.
+  g.save();
+  g.rotate(lean);
+  const robe = () => {
+    g.beginPath();
+    g.moveTo(-15, -TORSO + 6); g.quadraticCurveTo(0, -TORSO - 8, 15, -TORSO + 6);
+    g.lineTo(14, -2);
+    for (let i = 0; i <= 5; i++) g.lineTo(14 - i * 5.6, (i % 2 ? 6 : -2) + Math.sin(time * 5 + i) * 1.5);
+    g.closePath();
+  };
+  inked(g, robe, ROBE);
+  g.save(); robe(); g.clip();
+  g.fillStyle = ROBE_D; g.fillRect(-22, -TORSO - 10, 12, TORSO + 20);
+  g.restore();
+  inked(g, ellipsePath(g, 3, -TORSO + 22, 8, 12, 0.1), SKIN, 4);
+  g.strokeStyle = OL; g.lineWidth = 2;
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-3, -TORSO + 15 + i * 6); g.quadraticCurveTo(3, -TORSO + 19 + i * 6, 9, -TORSO + 15 + i * 6); g.stroke(); }
+  g.restore();
+
+  // Front wing, head, front arm.
+  wing(g, sx + 2, sy + 2, flap, ws * 1.4, '#5a3584', SKIN);
+  aswangHead(g, f, time, eyeColor, aura, hx, hy, headA);
+  const fa = joint(sx + 3, sy, p.aF1 * D, UA, p.aF2 * D, FA);
+  noodle(g, fa, 7, SKIN);
+  inked(g, ellipsePath(g, fa[1][0], fa[1][1], 5, 5), SKIN, 4);
+  claws(g, fa[2][0], fa[2][1], p.aF2 * D, SKIN);
+  g.restore();
+
+  slashArcs(g, f, eyeColor);
+}
+
+// The legs it leaves standing behind: the legend's weak spot. Smoke curls
+// from the torn waist, and they flash white when struck.
+export function drawLegs(g, legs, time) {
+  const THIGH = 36, SHIN = 38;
+  const pose = A.idle;
+  const white = legs.flash > 0;
+  const c = (col) => (white ? '#ffffff' : col);
+  g.save();
+  g.translate(legs.x, GROUND);
+  g.scale(legs.facing, 1);
+  const hipY = -footDrop(pose, THIGH, SHIN);
+  const bl = joint(-3, hipY, pose.lB1 * D, THIGH, pose.lB2 * D, SHIN);
+  noodle(g, bl, 9, c(ASW.SKIN_D));
+  inked(g, ellipsePath(g, bl[1][0], bl[1][1], 6, 6), c(ASW.SKIN_D), 4);
+  footClaws(g, bl[2][0], bl[2][1]);
+  const fl = joint(3, hipY, pose.lF1 * D, THIGH, pose.lF2 * D, SHIN);
+  noodle(g, fl, 9, c(ASW.SKIN));
+  inked(g, ellipsePath(g, fl[1][0], fl[1][1], 6, 6), c(ASW.SKIN), 4);
+  footClaws(g, fl[2][0], fl[2][1]);
+  // Ragged skirt of the robe, torn at the top.
+  inked(g, () => {
+    g.beginPath();
+    g.moveTo(-16, hipY - 6);
+    for (let i = 0; i <= 5; i++) g.lineTo(-16 + i * 6.4, hipY - 6 - (i % 2 ? 7 : 1));
+    g.lineTo(16, hipY + 6);
+    for (let i = 0; i <= 6; i++) { const x = 16 - i * 5.3; g.lineTo(x - 2.6, hipY + 16 + (i % 2) * 8 + Math.sin(time * 3 + i) * 2); g.lineTo(x - 5.3, hipY + 6); }
+    g.closePath();
+  }, c(ASW.ROBE));
+  g.restore();
+  // Smoke rising from the torn waist.
+  g.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const t = (time * 0.8 + i / 3) % 1;
+    g.strokeStyle = `rgba(60,30,80,${0.55 * (1 - t)})`;
+    g.lineWidth = 9 - t * 5;
+    g.beginPath();
+    g.moveTo(legs.x - 6 + i * 6, GROUND - 82);
+    g.quadraticCurveTo(legs.x - 10 + i * 6 + Math.sin(time * 3 + i) * 8, GROUND - 82 - 20 * t, legs.x - 4 + i * 6 + Math.sin(time * 2 + i) * 12, GROUND - 90 - 40 * t);
+    g.stroke();
+  }
 }
 
 // ---------------- Projectiles, effects, HUD ----------------
@@ -1003,7 +1168,7 @@ function bar(g, x, y, w, h, frac, shown, color, flip) {
   g.fillRect(x, y, w, h / 3);
 }
 
-export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score, intent, focus }) {
+export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score, intent, focus, aswangName = 'ASWANG' }) {
   const bw = 360;
   bar(g, 30, 26, bw, 18, player.hp / player.maxHp, shownP, '#e0b040', true);
   bar(g, W - 30 - bw, 26, bw, 18, aswang.hp / aswang.maxHp, shownA, '#8fd16a', false);
@@ -1012,7 +1177,7 @@ export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score
   g.textAlign = 'left';
   g.fillText('DAKILA · Kali', 30, 62);
   g.textAlign = 'right';
-  g.fillText('ASWANG', W - 30, 62);
+  g.fillText(aswangName, W - 30, 62);
   // Round pips.
   for (let i = 0; i < 2; i++) {
     g.fillStyle = i < score.player ? '#e0b040' : 'rgba(255,255,255,0.15)';
