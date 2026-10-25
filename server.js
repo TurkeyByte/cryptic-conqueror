@@ -69,6 +69,6 @@ const server = http.createServer(async (req, res) => {
 const port = Number(process.env.PORT) || 3000;
 server.listen(port, () => {
   const h = health().json;
-  console.log(`Bantay running at http://localhost:${port}`);
+  console.log(`Cryptic Conqueror running at http://localhost:${port}`);
   console.log(`Nemotron: ${h.ai === 'configured' ? `ready (${h.model})` : 'NEBIUS_API_KEY not set — the Aswang will fight on instinct only'}`);
 });

@@ -54,8 +54,8 @@ kbd {
 .brand { display: flex; align-items: baseline; gap: 12px; }
 .logo {
   font-weight: 900;
-  font-size: 26px;
-  letter-spacing: 0.18em;
+  font-size: 24px;
+  letter-spacing: 0.12em;
   color: var(--gold);
   text-shadow: 0 0 18px rgba(224, 176, 64, 0.35);
 }
@@ -119,15 +119,26 @@ button.ghost:hover { border-color: var(--muted); }
 .overlay[hidden] { display: none; }
 .overlay h1 {
   margin: 0;
-  font-size: clamp(44px, 8vw, 88px);
+  display: flex;
+  flex-direction: column;
+  line-height: 0.95;
+  font-size: clamp(34px, 5.6vw, 70px);
   font-weight: 900;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.08em;
   color: var(--gold);
   text-shadow: 0 0 30px rgba(224, 176, 64, 0.4), 0 4px 0 #6b1218;
 }
 .overlay h2 { margin: 0; font-size: clamp(32px, 5vw, 56px); font-weight: 900; letter-spacing: 0.1em; }
 .overlay h2.win { color: var(--gold); text-shadow: 0 0 24px rgba(224, 176, 64, 0.5); }
 .overlay h2.lose { color: var(--green); text-shadow: 0 0 24px rgba(143, 209, 106, 0.4); }
+.subtitle {
+  margin: -4px 0 2px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #c084fc;
+}
 .lede { margin: 0; max-width: 560px; color: var(--text); line-height: 1.55; font-size: 15px; }
 .tour {
   display: flex;

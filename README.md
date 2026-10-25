@@ -1,4 +1,4 @@
-# BANTAY: The Aswang Learns
+# Cryptic Conqueror: Monsters That Learn
 
 Street Fighter-style one-on-one fights against monsters from world folklore, except the monsters learn. You play **Dakila**, a modern Filipino fighter trained in Kali / Eskrima / Arnis, armed with twin rattan sticks. He travels the world facing its legendary creatures, and **every monster studies how you fight**.
 
