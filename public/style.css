@@ -249,7 +249,7 @@ button.ghost:hover { border-color: var(--muted); }
   font-weight: 900;
   font-size: 22px;
   letter-spacing: 0.08em;
-  color: #9fb7a0;
+  color: #d9ec9c;
 }
 #ai-intent[data-intent="AGGRESSIVE"] { color: #ff4d4d; }
 #ai-intent[data-intent="DEFENSIVE"] { color: #5fa8ff; }

@@ -6,7 +6,7 @@ import { Strategist } from './strategist.js';
 import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
-  drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog, drawVignette,
+  drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog, lanternPos,
 } from './render.js';
 
 const ROUND_TIME = 60;
@@ -395,6 +395,21 @@ function drawFighter(f, paint) {
   g.drawImage(layer, rx, ry, BOX.w, BOX.h);
 }
 
+// Where the lantern and moon light each fighter from: unit directions and strength.
+const MOON = { x: 700, y: 110 };
+function lightsFor(f, camX) {
+  const cy = f.y - 80;
+  const dir = (tx, ty) => { const dx = tx - f.x, dy = ty - cy, d = Math.hypot(dx, dy) || 1; return [dx / d, dy / d, d]; };
+  const [mx, my] = dir(MOON.x, MOON.y);
+  const lp = lanternPos(camX);
+  const [lx, ly, ld] = dir(lp.x, lp.y);
+  const flick = 0.92 + Math.sin(game.time * 13) * 0.04 + Math.sin(game.time * 7) * 0.04;
+  return [
+    { x: mx, y: my, rgb: '185,195,255', a: 0.5 },
+    { x: lx, y: ly, rgb: '255,175,95', a: Math.max(0, 1 - ld / 430) * flick },
+  ];
+}
+
 function draw() {
   g.save();
   if (game.shake > 0) g.translate((Math.random() - 0.5) * game.shake * 40, (Math.random() - 0.5) * game.shake * 30);
@@ -405,13 +420,15 @@ function draw() {
     g.scale(1 + game.zoom, 1 + game.zoom);
     g.translate(-cx, -cy);
   }
-  drawArena(g, game.time);
+  // Parallax follows the midpoint of the fight.
+  const camX = (player.x + aswang.x) / 2 - W / 2;
+  drawArena(g, game.time, camX);
   drawShadow(g, player);
   drawShadow(g, aswang);
   const eye = INTENT_COLORS[brain.intent];
   const aura = game.thought?.changed ? Math.max(0, (game.thought.t - (game.thought.life - 1.4)) / 1.4) : 0;
-  const paintA = (c) => drawAswang(c, aswang, game.time, eye, aura);
-  const paintP = (c) => drawPlayer(c, player, game.time);
+  const paintA = (c) => drawAswang(c, aswang, game.time, eye, aura, lightsFor(aswang, camX));
+  const paintP = (c) => drawPlayer(c, player, game.time, lightsFor(player, camX));
   // Draw whoever is attacking on top.
   if (aswang.state === 'attack') { drawFighter(player, paintP); drawFighter(aswang, paintA); }
   else { drawFighter(aswang, paintA); drawFighter(player, paintP); }
@@ -419,7 +436,6 @@ function draw() {
   drawFog(g, game.time);
   drawParticles(g, game.particles);
   g.restore();
-  drawVignette(g);
   if (game.flash > 0) {
     g.fillStyle = `rgba(255,245,230,${Math.min(0.5, game.flash * 1.6)})`;
     g.fillRect(0, 0, W, H);
