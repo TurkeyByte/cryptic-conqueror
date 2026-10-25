@@ -152,6 +152,14 @@ function sparks(x, y, color, n = 12, speed = 380) {
   game.particles.push({ kind: 'ring', x, y, r: 40, t: 0.25, life: 0.25, color });
   game.particles.push({ kind: 'star', x, y, vx: 0, vy: 0, r: n > 12 ? 46 : 30, rot: Math.random(), t: 0.13, life: 0.13, color: '#fffbe8' });
 }
+// Green bile splattering off a block.
+function splat(x, y) {
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 80 + Math.random() * 220;
+    game.particles.push({ kind: 'dot', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, t: 0.45, life: 0.45, r: 2.5 + Math.random() * 3.5, color: '#b6f26e' });
+  }
+  game.particles.push({ kind: 'ring', x, y, r: 34, t: 0.22, life: 0.22, color: '#d8ff9a' });
+}
 function dust(x, n = 6) {
   for (let i = 0; i < n; i++) {
     game.particles.push({ kind: 'dot', x: x + (Math.random() - 0.5) * 30, y: GROUND - 2, vx: (Math.random() - 0.5) * 120, vy: -Math.random() * 60, t: 0.5, life: 0.5, r: 4 + Math.random() * 4, color: 'rgba(120,90,90,0.6)' });
@@ -197,14 +205,18 @@ function updateProjectiles(dt) {
     pr.x += pr.vx * dt;
     pr.life -= dt;
     const box = { x: pr.x - 10, y: pr.y - 10, w: 20, h: 20 };
-    if (player.vulnerable && overlap(box, player.hurtbox())) {
+    const dir = Math.sign(pr.vx);
+    const guarding = (player.state === 'guard' || player.state === 'blockstun') && player.facing === -dir;
+    // A guarding Dakila raises his sticks into the spit's path, so it splats on
+    // his block instead of flying over his crouch.
+    const target = guarding ? { ...player.hurtbox(), y: player.y - 118, h: 118 } : player.hurtbox();
+    if (player.vulnerable && overlap(box, target)) {
       pr.life = 0;
-      const dir = Math.sign(pr.vx);
       const m = ASWANG_MOVES.spit;
       const hitM = { ...m, knock: 160, hitstun: 0.3, blockstun: 0.18 };
-      if ((player.state === 'guard' || player.state === 'blockstun') && player.facing === -dir) {
+      if (guarding) {
         player.blockHit(hitM, dir);
-        sparks(pr.x, pr.y, '#d8ff9a', 6, 200);
+        splat(player.x + player.facing * 22, pr.y);
         sfx.block();
         observer.contact('aswang', 'spit', 'blocked');
       } else {

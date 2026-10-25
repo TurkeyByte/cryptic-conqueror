@@ -65,7 +65,8 @@ export class Fighter {
     if (this.t < m.startup + m.active) return 'active';
     return 'recovery';
   }
-  // The player's guard is a crouching block, which ducks under high attacks.
+  // The player's guard is a crouching block (shorter hurtbox). Bile spit is
+  // still blocked by it rather than ducked; see updateProjectiles in main.js.
   get crouching() {
     if (this.kind !== 'player') return false;
     return this.state === 'guard' || (this.state === 'blockstun' && this.lowBlock) || (this.state === 'attack' && this.moveName === 'walis');

@@ -41,7 +41,7 @@ Several layouts work at the same time, so players can use whichever feels natura
 |---|---|---|
 | Move | `A` `D` or `←` `→` | Left stick / D-pad |
 | Jump | `W` / `↑` / `Space` | A |
-| Crouch + block | `S` / `↓` (hold): ducks under bile spit, blocks all but grabs | LB / D-pad down |
+| Crouch + block | `S` / `↓` (hold): blocks everything except grabs, bile spit included | LB / D-pad down |
 | Witik (fast strike) | Left click / `J` / `Z` | X |
 | Redonda (heavy spin) | Right click / `K` / `X` | Y |
 | Sungkite (long thrust) | `E` / `L` / `C` / middle click | B |
