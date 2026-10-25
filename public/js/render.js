@@ -554,18 +554,6 @@ function sneaker(g, x, y) {
   g.fillRect(x - 7, y - 1, 24, 3);
 }
 
-// A big round cartoon eye: white with a small pupil looking forward.
-function eye(g, x, y, rx, ry, pupilDx, closed) {
-  if (closed) {
-    g.strokeStyle = OL; g.lineWidth = 2.6; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(x - rx, y + 1); g.quadraticCurveTo(x, y + 3, x + rx, y + 1); g.stroke();
-    return;
-  }
-  inked(g, ellipsePath(g, x, y, rx, ry), '#ffffff', 2.4);
-  g.fillStyle = OL;
-  g.beginPath(); g.arc(x + pupilDx, y + 0.5, Math.min(rx, ry) * 0.38, 0, Math.PI * 2); g.fill();
-}
-
 // Dakila: a modern Filipino Kali fighter, drawn as a bold cartoon. Hoodie,
 // jeans and big sneakers, with his heritage in the red putong (headband) and
 // a woven bracelet.
@@ -628,7 +616,7 @@ export function drawPlayer(g, f, time) {
   noodle(g, [[hx - 14, hy - 6], [hx - 28, hy - 6 + tw], [hx - 40, hy + 2 - tw]], 5, RED);
   noodle(g, [[hx - 14, hy - 4], [hx - 26, hy + 4 - tw * 0.5], [hx - 34, hy + 14 + tw * 0.6]], 4, RED);
 
-  // Big head with a shaded back, spiky hair, headband and ear.
+  // Big head with a shaded back, spiky hair and headband (no ears, cartoon-style).
   inked(g, ellipsePath(g, hx, hy, HEAD, HEAD * 1.02), SKIN);
   g.save(); ellipsePath(g, hx, hy, HEAD, HEAD * 1.02)(); g.clip();
   g.fillStyle = SKIN_D; g.beginPath(); g.arc(hx - 14, hy + 6, 16, 0, Math.PI * 2); g.fill();
@@ -643,18 +631,26 @@ export function drawPlayer(g, f, time) {
     g.closePath();
   }, '#1a1212');
   inked(g, () => { g.beginPath(); g.moveTo(hx - HEAD + 1, hy - 10); g.lineTo(hx + HEAD - 1, hy - 14); g.lineTo(hx + HEAD - 0.5, hy - 8); g.lineTo(hx - HEAD + 0.5, hy - 3); g.closePath(); }, RED);
-  inked(g, ellipsePath(g, hx - 5, hy + 4, 4, 5.5), SKIN, 3);
 
-  // Face: two big eyes with small pupils, thick brows, no nose, attitude mouth.
+  // Face: solid "bean" eyes with a shine, thick brows, no nose, attitude mouth.
   const hurt = f.state === 'hurt' || f.state === 'down' || f.state === 'ko';
-  const blink = (time % 3.4) < 0.1;
-  const look = hurt ? -1 : 1.6;
-  eye(g, hx + 3, hy + 1, 4.6, 6, look, blink || hurt);
-  eye(g, hx + 12, hy + 1, 5.6, 7, look, blink || hurt);
-  g.strokeStyle = OL; g.lineWidth = 3.6; g.lineCap = 'round';
+  const shut = hurt || (time % 3.4) < 0.1;
+  g.strokeStyle = OL; g.lineCap = 'round';
+  for (const [ex, sc] of [[hx + 5, 0.85], [hx + 13, 1]]) {
+    if (shut) {
+      g.lineWidth = 2.4;
+      g.beginPath(); g.moveTo(ex - 2.6 * sc, hy + 1); g.lineTo(ex + 2.6 * sc, hy + 1); g.stroke();
+      continue;
+    }
+    g.fillStyle = OL;
+    g.beginPath(); g.ellipse(ex, hy + 0.5, 2.3 * sc, 3.8 * sc, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(ex + 0.7, hy - 1, 0.9 * sc, 0, Math.PI * 2); g.fill();
+  }
   const browY = hurt ? -9 : -7;
-  g.beginPath(); g.moveTo(hx - 0.5, hy + browY - 2); g.lineTo(hx + 5.5, hy + browY); g.stroke();
-  g.beginPath(); g.moveTo(hx + 8.5, hy + browY + 0.5); g.lineTo(hx + 17, hy + browY - 2.5); g.stroke();
+  g.lineWidth = 3.6;
+  g.beginPath(); g.moveTo(hx + 1.5, hy + browY - 2); g.lineTo(hx + 7, hy + browY); g.stroke();
+  g.beginPath(); g.moveTo(hx + 10, hy + browY + 0.5); g.lineTo(hx + 16.5, hy + browY - 2); g.stroke();
   const striking = f.state === 'attack' && f.phase !== 'recovery';
   if (striking || f.state === 'win') {
     // Battle shout.
@@ -853,36 +849,29 @@ export function drawAswang(g, f, time, eyeColor, aura = 0) {
   g.restore();
   // Hair fringe.
   inked(g, () => { g.beginPath(); g.moveTo(-19, 2); g.quadraticCurveTo(-16, -24, 6, -22); g.lineTo(2, -15); g.lineTo(-4, -19); g.lineTo(-8, -11); g.lineTo(-12, -15); g.lineTo(-14, 0); g.closePath(); }, HAIR);
-  // Eyes: soft dark sockets, glowing in the intent color, slit pupils. No ink
-  // rings around them, so they read as glowing eyes rather than glasses.
-  g.fillStyle = 'rgba(20,10,22,0.55)';
-  g.beginPath(); g.ellipse(9.5, -3.5, 8, 6.5, -0.25, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(-2.5, -3.5, 5.5, 5, -0.25, 0, Math.PI * 2); g.fill();
-  const flick = 0.85 + 0.15 * Math.sin(time * 9) * Math.sin(time * 3.1);
+  // Eyes: hollow black sockets with tiny pupils glowing in the intent color
+  // (X eyes when hit), under separate angry brows.
+  g.fillStyle = '#07030a';
+  g.beginPath(); g.ellipse(9.5, -3.5, 7, 6, -0.25, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(-2.5, -3.5, 4.8, 4.4, -0.25, 0, Math.PI * 2); g.fill();
   g.shadowColor = eyeColor; g.shadowBlur = 14 + aura * 10;
-  g.fillStyle = eyeColor;
   if (hurt) {
-    g.strokeStyle = eyeColor; g.lineWidth = 2.5; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(5, -6); g.lineTo(14, -1); g.moveTo(5, -1); g.lineTo(14, -6); g.stroke();
-    g.beginPath(); g.moveTo(-5, -5.5); g.lineTo(0, -1.5); g.moveTo(-5, -1.5); g.lineTo(0, -5.5); g.stroke();
+    g.strokeStyle = eyeColor; g.lineWidth = 2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(7, -6); g.lineTo(13, -1); g.moveTo(7, -1); g.lineTo(13, -6); g.stroke();
+    g.beginPath(); g.moveTo(-4.5, -5.5); g.lineTo(-0.5, -1.5); g.moveTo(-4.5, -1.5); g.lineTo(-0.5, -5.5); g.stroke();
+    g.shadowBlur = 0;
   } else {
-    g.beginPath(); g.ellipse(9.5, -3.5, 6, 4.6, -0.25, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.ellipse(-2.5, -3.5, 3.8, 3.4, -0.25, 0, Math.PI * 2); g.fill();
-  }
-  g.shadowBlur = 0;
-  if (!hurt) {
-    g.globalAlpha = flick;
+    const pulse = 1 + 0.15 * Math.sin(time * 9) * Math.sin(time * 3.1) + aura * 0.4;
+    g.fillStyle = eyeColor;
+    g.beginPath(); g.arc(11, -3, 2.2 * pulse, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(-1.5, -3, 1.5 * pulse, 0, Math.PI * 2); g.fill();
+    g.shadowBlur = 0;
     g.fillStyle = '#fffbe8';
-    g.beginPath(); g.ellipse(9, -4, 3, 2.2, -0.25, 0, Math.PI * 2); g.fill();
-    g.globalAlpha = 1;
-    g.fillStyle = OL;
-    g.beginPath(); g.ellipse(11, -3.5, 1.3, 3.6, 0, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.ellipse(-1.6, -3.5, 1, 2.7, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(11, -3, 0.9, 0, Math.PI * 2); g.fill();
   }
-  // Separate angry brows.
   g.strokeStyle = OL; g.lineWidth = 3.6; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(3.5, -12); g.lineTo(16, -8.5); g.stroke();
-  g.beginPath(); g.moveTo(-7, -9.5); g.lineTo(0.5, -10.5); g.stroke();
+  g.beginPath(); g.moveTo(3, -12.5); g.lineTo(16.5, -9.5); g.stroke();
+  g.beginPath(); g.moveTo(-7.5, -10); g.lineTo(0.5, -10.5); g.stroke();
   // Wide grin full of fangs.
   inked(g, () => { g.beginPath(); g.moveTo(-6, 9); g.quadraticCurveTo(6, 13, 19, 6); g.quadraticCurveTo(10, 14 + jaw, -4, 12 + jaw * 0.5); g.closePath(); }, '#3a0a14', 3);
   g.fillStyle = '#fff8e8';
