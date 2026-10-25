@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bantay: The Aswang Learns</title>
+  <meta name="description" content="A Kali warrior against an Aswang that studies your fighting style. Its strategy is planned live by NVIDIA Nemotron on Nebius Token Factory." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo">BANTAY</span>
+      <span class="tag">The Aswang Learns</span>
+    </div>
+    <div class="top-actions">
+      <button id="mute" class="ghost">🔊 Sound on</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="stage">
+      <canvas id="game" width="960" height="540" aria-label="Bantay fighting game"></canvas>
+
+      <div class="overlay" id="title">
+        <h1>BANTAY</h1>
+        <p class="lede">You are <b>Dakila</b>, a Filipino fighter trained in Kali, armed with twin rattan sticks. You travel the world facing monsters from its folklore, and <b>every monster studies how you fight</b>.</p>
+        <p class="lede">First stop: home. On a blood-moon night in a Philippine barrio, an <b>Aswang</b> hunts.</p>
+        <ol class="tour" aria-label="World tour">
+          <li class="here"><span class="where">Philippines</span><span class="who">Aswang</span></li>
+          <li><span class="where">Eastern Europe</span><span class="who">? ? ?</span></li>
+          <li><span class="where">Latin America</span><span class="who">? ? ?</span></li>
+          <li><span class="where">Greece</span><span class="who">? ? ?</span></li>
+          <li class="boss"><span class="where">Japan</span><span class="who">Final boss</span></li>
+        </ol>
+        <p class="ai-line" id="title-ai" data-state="checking">Connecting to Nemotron…</p>
+        <button id="start" class="primary">▶ Fight <kbd>Enter</kbd></button>
+        <p class="hint">Best of 3 rounds. Watch the <b>Aswang Mind</b> panel: that's Nemotron reading you.</p>
+      </div>
+
+      <div class="overlay" id="pause" hidden>
+        <h2>Paused</h2>
+        <button id="resume" class="primary">▶ Resume</button>
+        <button id="quit" class="ghost">Quit to title</button>
+      </div>
+
+      <div class="overlay" id="over" hidden>
+        <h2 id="over-title">PANALO!</h2>
+        <p id="over-sub" class="lede"></p>
+        <div class="summary">
+          <div><span class="k">Nemotron plans</span><span id="over-plans" class="v">0</span></div>
+          <div class="wide"><span class="k">How the Aswang's mind shifted</span><span id="over-trail" class="v"></span></div>
+          <div class="wide"><span class="k">Its last read on you</span><span id="over-read" class="v"></span></div>
+        </div>
+        <p class="next-stop">Next stop: <b>Eastern Europe</b>. Coming soon.</p>
+        <button id="rematch" class="primary">↻ Rematch <kbd>Enter</kbd></button>
+      </div>
+    </div>
+
+    <aside id="ai-panel" class="panel">
+      <div class="panel-head">
+        <span class="panel-title">ASWANG MIND</span>
+        <span id="ai-status" data-state="checking">CONNECTING</span>
+      </div>
+      <div class="panel-sub">Planned by NVIDIA Nemotron · Nebius Token Factory</div>
+      <div class="next" title="Time until the next Nemotron analysis"><div id="ai-next"></div></div>
+
+      <section>
+        <h3><span class="step">1</span> OBSERVE</h3>
+        <p id="ai-observe">Watching Dakila…</p>
+      </section>
+      <section>
+        <h3><span class="step">2</span> ADAPT</h3>
+        <p id="ai-adapt">No plan yet: fighting on raw instinct.</p>
+      </section>
+      <section>
+        <h3><span class="step">3</span> PLAN</h3>
+        <div id="ai-intent" data-intent="INSTINCT">INSTINCT</div>
+        <div id="ai-focus"></div>
+      </section>
+
+      <p id="ai-note" hidden></p>
+
+      <dl class="stats">
+        <dt>model</dt><dd id="ai-model">—</dd>
+        <dt>latency</dt><dd id="ai-latency">—</dd>
+        <dt>plans ok</dt><dd id="ai-calls">0/0</dd>
+      </dl>
+
+      <section>
+        <h3>PLAN HISTORY</h3>
+        <ul id="ai-log"></ul>
+        <p id="ai-log-empty" class="muted">No plans yet.</p>
+      </section>
+
+      <details>
+        <summary>What the Aswang sees (telemetry sent to Nemotron)</summary>
+        <pre id="ai-telemetry">Nothing sent yet.</pre>
+      </details>
+    </aside>
+  </main>
+
+  <section class="controls">
+    <div><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> move</div>
+    <div><kbd>W</kbd> / <kbd>↑</kbd> / <kbd>Space</kbd> jump</div>
+    <div><kbd>S</kbd> / <kbd>↓</kbd> guard</div>
+    <div><kbd>J</kbd> witik <span class="muted">fast strike</span></div>
+    <div><kbd>K</kbd> redonda <span class="muted">heavy spin</span></div>
+    <div><kbd>L</kbd> sungkite <span class="muted">long thrust</span></div>
+    <div><kbd>J</kbd>/<kbd>K</kbd>/<kbd>L</kbd> in air: lusob <span class="muted">jump strike</span></div>
+    <div><kbd>Shift</kbd> dash <span class="muted">evade</span></div>
+    <div><kbd>P</kbd> pause · <kbd>M</kbd> mute</div>
+    <div class="muted">Gamepad supported</div>
+  </section>
+
+  <footer class="foot">
+    Original game and art. Aswang and Kali are part of Philippine folklore and martial heritage; all characters and visuals here are our own interpretation.
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

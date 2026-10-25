@@ -1,0 +1,14 @@
+{
+  "name": "bantay",
+  "version": "1.0.0",
+  "description": "A Kali warrior vs. an Aswang that learns your fighting style, powered by NVIDIA Nemotron on Nebius Token Factory.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}
