@@ -66,9 +66,12 @@ function applyPlan(s) {
   game.thought = {
     head: `${changed ? '⟳ ' : '✓ '}${s.intent}${s.focus.length ? ' · ' + s.focus.map((f) => f.replace(/_/g, ' ')).join(' · ') : ''}`,
     taunt: s.taunt ? `“${s.taunt}”` : '',
+    translation: s.tauntEn ? `(${s.tauntEn})` : '',
     color: INTENT_COLORS[s.intent],
     changed,
-    t: 3.2,
+    // Stay up a little longer when there's a translation to read.
+    t: s.tauntEn ? 4.2 : 3.2,
+    life: s.tauntEn ? 4.2 : 3.2,
   };
   if (changed) sfx.adapt();
 }
@@ -406,7 +409,7 @@ function draw() {
   drawShadow(g, player);
   drawShadow(g, aswang);
   const eye = INTENT_COLORS[brain.intent];
-  const aura = game.thought?.changed ? Math.max(0, (game.thought.t - 1.8) / 1.4) : 0;
+  const aura = game.thought?.changed ? Math.max(0, (game.thought.t - (game.thought.life - 1.4)) / 1.4) : 0;
   const paintA = (c) => drawAswang(c, aswang, game.time, eye, aura);
   const paintP = (c) => drawPlayer(c, player, game.time);
   // Draw whoever is attacking on top.

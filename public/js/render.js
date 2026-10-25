@@ -791,27 +791,32 @@ export function drawBanner(g, text, sub, alpha, color = '#f2e6d0') {
 // Floating callout above the Aswang when Nemotron changes its plan.
 export function drawThought(g, aswang, th) {
   if (!th || th.t <= 0) return;
-  const a = Math.min(1, th.t * 2, (3.2 - th.t) * 4);
-  const x = Math.max(140, Math.min(W - 140, aswang.x));
-  const y = aswang.y - 190 - (3.2 - th.t) * 6;
+  const life = th.life || 3.2;
+  const a = Math.min(1, th.t * 2, (life - th.t) * 4);
+  const x = Math.max(150, Math.min(W - 150, aswang.x));
+  const y = aswang.y - 190 - (life - th.t) * 6;
   g.save();
   g.globalAlpha = Math.max(0, a);
-  g.font = 'bold 13px system-ui, sans-serif';
   g.textAlign = 'center';
-  const lines = [th.head, th.taunt].filter(Boolean);
-  const w = Math.max(...lines.map((l) => g.measureText(l).width)) + 24;
-  const h = lines.length * 18 + 12;
+  // Each line: text, font, color, height.
+  const lines = [
+    [th.head, 'bold 13px system-ui, sans-serif', th.color, 18],
+    [th.taunt, 'italic 12px system-ui, sans-serif', '#f2e6d0', 18],
+    [th.translation, '11px system-ui, sans-serif', '#a8977f', 15],
+  ].filter((l) => l[0]);
+  const w = Math.max(...lines.map(([text, font]) => { g.font = font; return g.measureText(text).width; })) + 24;
+  const h = lines.reduce((sum, l) => sum + l[3], 0) + 12;
   g.fillStyle = 'rgba(10,6,16,0.85)';
   g.strokeStyle = th.color;
   g.lineWidth = 2;
   g.beginPath(); g.roundRect(x - w / 2, y - h, w, h, 8); g.fill(); g.stroke();
   g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x, y + 9); g.lineTo(x + 6, y); g.fill();
-  g.fillStyle = th.color;
-  g.fillText(lines[0], x, y - h + 20);
-  if (lines[1]) {
-    g.font = 'italic 12px system-ui, sans-serif';
-    g.fillStyle = '#f2e6d0';
-    g.fillText(lines[1], x, y - h + 38);
+  let ty = y - h + 2;
+  for (const [text, font, color, lh] of lines) {
+    ty += lh;
+    g.font = font;
+    g.fillStyle = color;
+    g.fillText(text, x, ty);
   }
   g.restore();
 }

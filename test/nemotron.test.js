@@ -3,10 +3,17 @@ import assert from 'node:assert/strict';
 import { parseStrategy, callNemotron, buildMessages, BadRequest } from '../lib/nemotron.js';
 import { strategy } from '../lib/handler.js';
 
-const good = { observe: 'Player jumps a lot.', adapt: 'Anti-air every jump.', intent: 'COUNTER', focus: ['ANTI_AIR'], taunt: 'Lipad ka pa?' };
+const good = { observe: 'Player jumps a lot.', adapt: 'Anti-air every jump.', intent: 'COUNTER', focus: ['ANTI_AIR'], taunt: 'Lipad ka pa?', taunt_en: 'Still flying?' };
 
 test('parses a clean JSON reply', () => {
-  assert.deepEqual(parseStrategy(JSON.stringify(good)), good);
+  const { taunt_en, ...rest } = good;
+  assert.deepEqual(parseStrategy(JSON.stringify(good)), { ...rest, tauntEn: taunt_en });
+});
+
+test('drops the translation when the taunt is already English or missing', () => {
+  assert.equal(parseStrategy(JSON.stringify({ ...good, taunt: 'Come closer.', taunt_en: 'come closer.' })).tauntEn, '');
+  assert.equal(parseStrategy(JSON.stringify({ ...good, taunt_en: undefined })).tauntEn, '');
+  assert.equal(parseStrategy(JSON.stringify({ ...good, taunt: '' })).tauntEn, '');
 });
 
 test('strips think blocks, markdown fences and surrounding text', () => {
