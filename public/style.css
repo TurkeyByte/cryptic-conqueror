@@ -165,6 +165,10 @@ button.ghost:hover { border-color: var(--muted); }
 .tour .who { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8; }
 .tour li.here { border: 1px solid var(--gold); color: var(--gold); background: rgba(224, 176, 64, 0.08); }
 .tour li.boss { border-color: rgba(255, 139, 209, 0.45); color: #ff8bd1; }
+.memory-line { margin: 0; font-size: 12px; color: #c084fc; }
+.memory-line[hidden] { display: none; }
+button.link { padding: 0 2px; border: 0; background: none; color: var(--muted); font-size: 12px; text-decoration: underline; }
+button.link:hover { color: var(--text); }
 .next-stop { margin: 0; color: var(--muted); font-size: 13px; }
 .hint { margin: 0; color: var(--muted); font-size: 13px; }
 .ai-line {

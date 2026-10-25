@@ -3,6 +3,7 @@ import { Input } from './input.js';
 import { AswangBrain } from './brain.js';
 import { Observer } from './observer.js';
 import { Strategist } from './strategist.js';
+import { Memory, summarizeMatch } from './memory.js';
 import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
@@ -11,6 +12,10 @@ import {
 } from './render.js';
 
 const ROUND_TIME = 60;
+// The monster grows: Level 1 for a new player, +1 each time the player wins
+// a match (remembered in its memory), up to MAX_LEVEL. Toughness 0..1 scales
+// health and damage here, reactions in brain.js, and replanning in strategist.js.
+const MAX_LEVEL = 5;
 const TRANSFORM_AT = 0.4;   // the Aswang splits into a manananggal below this much health
 const TRANSFORM_TIME = 1.8; // length of the transformation moment
 const LEG_DAMAGE = 1.5;     // hits on the abandoned legs hurt it this much more
@@ -37,6 +42,13 @@ const aswang = new Fighter('aswang', { maxHp: 120, walkSpeed: 190, moves: ASWANG
 const brain = new AswangBrain();
 const observer = new Observer();
 const strategist = new Strategist({ onPlan: applyPlan });
+const memory = new Memory();
+const level = () => Math.min(MAX_LEVEL, 1 + memory.playerWins);
+const toughness = () => (level() - 1) / (MAX_LEVEL - 1);
+let matchToughness = 0;
+
+// Scale the Aswang's damage for its current level.
+const scaled = (m) => ({ ...m, dmg: Math.round(m.dmg * (1 + 0.35 * matchToughness)) });
 
 const game = {
   mode: 'title', // title | intro | fight | roundEnd | over
@@ -82,7 +94,7 @@ function applyPlan(s) {
 
 const telemetry = () => observer.telemetry({
   round: game.round, roundTime: game.timer, player, aswang, score: game.score, intent: brain.intent, focus: brain.focus,
-  form: aswang.form || 'aswang',
+  form: aswang.form || 'aswang', level: `${level()}/${MAX_LEVEL}`, memory: memory.forTelemetry(),
 });
 
 // ---------------- Match flow ----------------
@@ -93,10 +105,17 @@ function startMatch() {
   game.planTrail = [];
   game.lastRead = '';
   observer.matchReset();
+  matchToughness = toughness();
+  aswang.maxHp = Math.round(120 + 30 * matchToughness);
+  brain.setToughness(matchToughness);
   brain.setPlan('INSTINCT', []);
+  strategist.setToughness(matchToughness);
   strategist.newMatch();
   for (const id of ['title', 'over', 'pause']) $(id).hidden = true;
   startRound();
+  // It remembers: with past matches on record, ask Nemotron for an opening
+  // plan right away instead of fighting the first seconds on instinct.
+  if (memory.count) strategist.requestNow(telemetry());
 }
 
 function startRound() {
@@ -116,7 +135,9 @@ function startRound() {
   game.buffer = null;
   // Show the controls reminder for the first stretch of the first round.
   game.hintT = game.round === 1 ? 20 : 0;
-  game.banner = { text: `ROUND ${game.round}`, sub: game.round === 1 ? 'The Aswang is watching how you fight.' : `It remembers. Current mind: ${brain.intent}`, color: '#f2e6d0' };
+  const n = memory.count;
+  const opening = n ? `It remembers you from ${n} match${n > 1 ? 'es' : ''}…` : 'The Aswang is watching how you fight.';
+  game.banner = { text: `ROUND ${game.round}`, sub: game.round === 1 ? opening : `It remembers. Current mind: ${brain.intent}`, color: '#f2e6d0' };
   sfx.roundStart();
 }
 
@@ -149,7 +170,23 @@ function endMatch() {
     : strategist.status === 'offline' ? 'Nemotron was offline: the Aswang fought on instinct only.' : 'No strategy changes this match.';
   $('over-plans').textContent = String(game.planTrail.length);
   $('over-read').textContent = game.lastRead || '—';
+  // Remember this match for next time.
+  observer.closePlan(brain.intent, brain.focus);
+  const before = level();
+  memory.record(summarizeMatch({ match: observer.match, plans: observer.allPlans, result: won ? 'player' : 'aswang', level: before, lastRead: game.lastRead }));
+  updateMemoryLine();
+  $('over-memory').textContent = level() > before
+    ? `🧠 It will remember this, and it grows stronger: Level ${level()} next time.`
+    : `🧠 It will remember this match. (Level ${level()})`;
   $('over').hidden = false;
+}
+
+function updateMemoryLine() {
+  const n = memory.count;
+  $('memory-line').hidden = n === 0;
+  $('memory-text').textContent = n
+    ? `🧠 The Aswang remembers you from ${n} match${n > 1 ? 'es' : ''}. It has grown to Level ${level()}${level() === MAX_LEVEL ? ' (max)' : ''}.`
+    : '';
 }
 
 // ---------------- Manananggal ----------------
@@ -254,14 +291,15 @@ function resolve(att, def, who) {
     return;
   }
   const wasAir = def.airborne;
-  def.takeHit(m, dir, wasAir);
+  const dm = who === 'aswang' ? scaled(m) : m;
+  def.takeHit(dm, dir, wasAir);
   game.hitstop = m.dmg >= 11 ? 0.11 : 0.07;
   game.shake = m.dmg >= 11 ? 0.25 : 0.12;
   game.zoom = m.dmg >= 11 ? 0.045 : 0.02;
   if (m.dmg >= 11) game.flash = 0.12;
   sparks(px, py, who === 'player' ? '#ffe39a' : '#ff6a6a', m.dmg >= 11 ? 18 : 11);
   (who === 'player' ? sfx.stickHit : sfx.clawHit)();
-  observer.contact(who, att.moveName, 'hit', m.dmg);
+  observer.contact(who, att.moveName, 'hit', dm.dmg);
 }
 
 function updateProjectiles(dt) {
@@ -279,7 +317,7 @@ function updateProjectiles(dt) {
     if (player.vulnerable && overlap(box, target)) {
       pr.life = 0;
       const m = ASWANG_MOVES.spit;
-      const hitM = { ...m, knock: 160, hitstun: 0.3, blockstun: 0.18 };
+      const hitM = { ...scaled(m), knock: 160, hitstun: 0.3, blockstun: 0.18 };
       if (guarding) {
         player.blockHit(hitM, dir);
         splat(player.x + player.facing * 22, pr.y);
@@ -291,7 +329,7 @@ function updateProjectiles(dt) {
         game.shake = 0.12;
         sparks(pr.x, pr.y, '#b6ff6a', 14);
         sfx.clawHit();
-        observer.contact('aswang', 'spit', 'hit', m.dmg);
+        observer.contact('aswang', 'spit', 'hit', hitM.dmg);
       }
     }
   }
@@ -519,7 +557,7 @@ function draw() {
   }
 
   if (game.mode !== 'title') {
-    drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus, aswangName: aswang.form === 'manananggal' ? 'MANANANGGAL' : 'ASWANG' });
+    drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus, level: level(), aswangName: aswang.form === 'manananggal' ? 'MANANANGGAL' : 'ASWANG' });
     if (game.mode === 'fight') drawThought(g, aswang, game.thought);
     if ((game.mode === 'intro' || game.mode === 'fight') && game.hintT > 0) drawControlsHint(g, Math.min(1, game.hintT / 2));
   }
@@ -560,6 +598,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) setPa
 // Title screen idle pose.
 player.reset(300, 1);
 aswang.reset(660, -1);
+$('forget').addEventListener('click', () => { memory.forget(); updateMemoryLine(); });
+updateMemoryLine();
 strategist.checkHealth().then((s) => {
   $('title-ai').textContent = s === 'ready'
     ? `Nemotron linked (${strategist.model}). The Aswang will study you.`

@@ -39,6 +39,7 @@ export class Observer {
     this.w = emptyWindow();
     this.match = emptyWindow();
     this.history = [];
+    this.allPlans = [];
   }
 
   // Start a fresh observation window (called after each Nemotron decision).
@@ -98,7 +99,9 @@ export class Observer {
   // Record how the plan that just ended performed, so Nemotron can judge it.
   closePlan(intent, focus) {
     const w = this.w;
-    this.history.push({ intent, focus, dmgDealt: w.dmgToPlayer, dmgTaken: w.dmgToAswang, seconds: Math.round(w.seconds) });
+    const result = { intent, focus, dmgDealt: w.dmgToPlayer, dmgTaken: w.dmgToAswang, seconds: Math.round(w.seconds) };
+    this.history.push(result);
+    this.allPlans.push(result);
     if (this.history.length > 4) this.history.shift();
   }
 
@@ -128,9 +131,10 @@ export class Observer {
     };
   }
 
-  telemetry({ round, roundTime, player, aswang, score, intent, focus, form }) {
+  telemetry({ round, roundTime, player, aswang, score, intent, focus, form, level, memory }) {
     return {
       round,
+      aswangLevel: level,
       aswangForm: form,
       roundTimeLeft: Math.round(roundTime),
       roundsWon: score,
@@ -139,6 +143,7 @@ export class Observer {
       recent: this.summarize(this.w),
       wholeMatch: this.summarize(this.match),
       pastPlans: this.history,
+      memoryOfPastMatches: memory || null,
     };
   }
 }

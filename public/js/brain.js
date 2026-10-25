@@ -42,9 +42,17 @@ const FOCUS = {
   GUARD_MORE:     (p) => { p.guard = Math.max(p.guard, 0.7); },
 };
 
-export function buildProfile(intent, focus = []) {
+// Toughness (0 at Level 1 up to 1 at the top level) shortens reaction time
+// and makes it react more readily and move faster.
+const REACTIVE = ['antiAir', 'punish', 'punishDash', 'grab', 'guard', 'attack', 'pounce', 'spit'];
+
+export function buildProfile(intent, focus = [], toughness = 0) {
   const p = { ...BASE, ...(PROFILES[intent] || {}) };
   for (const f of focus) FOCUS[f]?.(p);
+  const t = Math.max(0, Math.min(1, toughness));
+  p.think *= 1 - 0.28 * t;
+  p.walkSpeed *= 1 + 0.12 * t;
+  for (const k of REACTIVE) p[k] = Math.min(0.95, p[k] * (1 + 0.3 * t));
   return p;
 }
 
@@ -67,7 +75,12 @@ export class AswangBrain {
   setPlan(intent, focus) {
     this.intent = intent;
     this.focus = focus;
-    this.p = buildProfile(intent, focus);
+    this.p = buildProfile(intent, focus, this.toughness);
+  }
+
+  setToughness(t) {
+    this.toughness = t;
+    this.setPlan(this.intent, this.focus);
   }
 
   // Manananggal form: the same intents and focus, translated to flight.

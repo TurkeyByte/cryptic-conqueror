@@ -1168,7 +1168,7 @@ function bar(g, x, y, w, h, frac, shown, color, flip) {
   g.fillRect(x, y, w, h / 3);
 }
 
-export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score, intent, focus, aswangName = 'ASWANG' }) {
+export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score, intent, focus, aswangName = 'ASWANG', level = 1 }) {
   const bw = 360;
   bar(g, 30, 26, bw, 18, player.hp / player.maxHp, shownP, '#e0b040', true);
   bar(g, W - 30 - bw, 26, bw, 18, aswang.hp / aswang.maxHp, shownA, '#8fd16a', false);
@@ -1195,6 +1195,10 @@ export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score
   g.font = 'bold 10px system-ui, sans-serif';
   g.fillStyle = '#c9b8a0';
   g.fillText(`ROUND ${round}`, W / 2, 74);
+  if (level > 1) {
+    g.fillStyle = level >= 5 ? '#ff5a64' : '#c084fc';
+    g.fillText(`LEVEL ${level}`, W / 2, 87);
+  }
 
   // Intent tag under the Aswang's bar, so the adaptation is visible in-arena too.
   const c = INTENT_COLORS[intent] || '#fff';

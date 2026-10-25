@@ -3,8 +3,9 @@
 // Factory) and hand the returned plan to the Aswang's brain. Also drives the
 // on-screen "Aswang Mind" panel.
 
-const FIRST_CALL_S = 5;
-const INTERVAL_S = 8;
+// Seconds of fighting before the first plan, and between plans. A tougher
+// monster (higher level) replans more often.
+const cadenceFor = (t) => ({ first: 5 - 2 * t, every: 8 - 3 * t });
 const RETRY_S = 6;
 const CLIENT_TIMEOUT_MS = 20000;
 
@@ -20,7 +21,8 @@ export class Strategist {
     this.latencies = [];
     this.matchId = 0;
     this.inflight = false;
-    this.timer = FIRST_CALL_S;
+    this.cadence = cadenceFor(0);
+    this.timer = this.cadence.first;
     this.log = [];
     this.lastTelemetry = null;
   }
@@ -37,9 +39,13 @@ export class Strategist {
     return this.status;
   }
 
+  setToughness(t) {
+    this.cadence = cadenceFor(t);
+  }
+
   newMatch() {
     this.matchId++;
-    this.timer = FIRST_CALL_S;
+    this.timer = this.cadence.first;
     this.inflight = false;
     this.log = [];
     this.renderLog();
@@ -49,7 +55,7 @@ export class Strategist {
 
   // Called once per frame while the round is live.
   tick(dt, getTelemetry) {
-    $('ai-next').style.width = this.status === 'offline' ? '0%' : `${Math.max(0, Math.min(100, (1 - this.timer / INTERVAL_S) * 100))}%`;
+    $('ai-next').style.width = this.status === 'offline' ? '0%' : `${Math.max(0, Math.min(100, (1 - this.timer / this.cadence.every) * 100))}%`;
     if (this.inflight || this.status === 'offline' || this.status === 'checking') return;
     this.timer -= dt;
     if (this.timer <= 0) this.request(getTelemetry());
@@ -91,7 +97,7 @@ export class Strategist {
       if (this.latencies.length > 20) this.latencies.shift();
       if (j.model) this.model = j.model;
       this.setStatus('ready');
-      this.timer = INTERVAL_S;
+      this.timer = this.cadence.every;
       this.onPlan(j.strategy, ms);
       this.showPlan(j.strategy);
       this.pushLog(j.strategy, ms, telemetry);
