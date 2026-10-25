@@ -15,7 +15,16 @@ The **Aswang Mind** panel next to the arena shows that loop as it runs: **OBSERV
 ## Roadmap
 
 - **Now (hackathon build):** Dakila vs. the Aswang, with Nemotron-driven adaptation, including the **manananggal** transformation (below).
-- **Later:** more world-tour stops (Eastern Europe, Latin America, Greece), ending in Japan with a shapeshifting **kitsune** final boss. It can become every monster you have faced, fighting with all their styles and everything they learned about you.
+- **Later:** the rest of the world tour, each monster with its own fighting style for Nemotron to adapt:
+
+  | Stop | Monster | Style |
+  |---|---|---|
+  | Philippines | Aswang → Manananggal | Shapeshifting predator (built) |
+  | Eastern Europe | Baba Yaga | Witch who sets traps where you like to walk |
+  | Latin America | Chupacabra | Small, fast, wall-jumping biter |
+  | Greece | Minotaur | Charging brute, walls that shrink the arena |
+  | Michigan, USA | Dogman | Feral stalker |
+  | Japan | Kitsune (final boss) | Becomes every monster you have faced, fighting with all their styles and everything they learned about you |
 
 ## The manananggal transformation
 
