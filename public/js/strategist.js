@@ -3,9 +3,9 @@
 // Factory) and hand the returned plan to the Aswang's brain. Also drives the
 // on-screen "Aswang Mind" panel.
 
-// Seconds of fighting before the first plan, and between plans. A tougher
-// monster (higher level) replans more often.
-const cadenceFor = (t) => ({ first: 5 - 2 * t, every: 8 - 3 * t });
+// Seconds of fighting before the first plan, and between plans. Set per
+// level (LEVELS in main.js): a stronger monster replans more often.
+const DEFAULT_CADENCE = { first: 5, every: 8 };
 const RETRY_S = 6;
 const CLIENT_TIMEOUT_MS = 20000;
 
@@ -21,7 +21,7 @@ export class Strategist {
     this.latencies = [];
     this.matchId = 0;
     this.inflight = false;
-    this.cadence = cadenceFor(0);
+    this.cadence = DEFAULT_CADENCE;
     this.timer = this.cadence.first;
     this.log = [];
     this.lastTelemetry = null;
@@ -39,8 +39,8 @@ export class Strategist {
     return this.status;
   }
 
-  setToughness(t) {
-    this.cadence = cadenceFor(t);
+  setCadence(cadence) {
+    this.cadence = cadence;
   }
 
   newMatch() {

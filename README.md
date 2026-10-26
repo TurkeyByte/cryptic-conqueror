@@ -26,6 +26,20 @@ The **Aswang Mind** panel next to the arena shows that loop as it runs: **OBSERV
   | Michigan, USA | Dogman | Feral stalker |
   | Japan | Kitsune (final boss) | Becomes every monster you have faced, fighting with all their styles and everything they learned about you |
 
+## It grows, and it remembers
+
+- **Levels.** A new player faces a **Level 1** Aswang, gentler than the rest so newcomers can win. Each time the player wins a match it grows a level, up to **Level 5**: more health and damage, faster reactions, and Nemotron replanning more often. Losing never lowers it. Tuning lives in the `LEVELS` table in `public/js/main.js`.
+
+  | Level | Health | Damage | Reactions | Nemotron replans every |
+  |---|---|---|---|---|
+  | 1 | 100 | 70% | slower | 10 s |
+  | 2 | 110 | 85% | a bit slower | 9 s |
+  | 3 | 120 | 100% | normal | 8 s |
+  | 4 | 135 | 118% | faster | 6.5 s |
+  | 5 | 150 | 135% | much faster | 5 s |
+
+- **Memory across matches.** After each match the browser stores a compact summary of the player's habits and which plans worked (`public/js/memory.js`, localStorage only, never sent anywhere but to Nemotron in telemetry). With memory on record, Nemotron is asked for an opening plan before round 1, so the Aswang starts the fight already countering you ("It remembers you from 3 matches…"). The title screen's **Forget me** wipes the memory and resets the level.
+
 ## The manananggal transformation
 
 In Philippine folklore the manananggal is a kind of aswang whose upper body tears away from its legs and flies on bat wings. Here, once per round when the Aswang drops below 40% health, it does exactly that:

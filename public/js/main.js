@@ -13,9 +13,18 @@ import {
 
 const ROUND_TIME = 60;
 // The monster grows: Level 1 for a new player, +1 each time the player wins
-// a match (remembered in its memory), up to MAX_LEVEL. Toughness 0..1 scales
-// health and damage here, reactions in brain.js, and replanning in strategist.js.
-const MAX_LEVEL = 5;
+// a match (remembered in its memory). Level 1 is gentler than the original
+// tuning so newcomers can win; Level 3 is the original; Level 5 is brutal.
+// hp/dmg apply here, think/react/speed in brain.js, first/every (seconds
+// between Nemotron plans) in strategist.js.
+const LEVELS = [
+  { hp: 100, dmg: 0.7,  think: 1.35, react: 0.7,  speed: 0.9,  first: 6,   every: 10 },
+  { hp: 110, dmg: 0.85, think: 1.15, react: 0.85, speed: 0.95, first: 5.5, every: 9 },
+  { hp: 120, dmg: 1,    think: 1,    react: 1,    speed: 1,    first: 5,   every: 8 },
+  { hp: 135, dmg: 1.18, think: 0.86, react: 1.15, speed: 1.06, first: 4,   every: 6.5 },
+  { hp: 150, dmg: 1.35, think: 0.72, react: 1.3,  speed: 1.12, first: 3,   every: 5 },
+];
+const MAX_LEVEL = LEVELS.length;
 const TRANSFORM_AT = 0.4;   // the Aswang splits into a manananggal below this much health
 const TRANSFORM_TIME = 1.8; // length of the transformation moment
 const LEG_DAMAGE = 1.5;     // hits on the abandoned legs hurt it this much more
@@ -44,11 +53,10 @@ const observer = new Observer();
 const strategist = new Strategist({ onPlan: applyPlan });
 const memory = new Memory();
 const level = () => Math.min(MAX_LEVEL, 1 + memory.playerWins);
-const toughness = () => (level() - 1) / (MAX_LEVEL - 1);
-let matchToughness = 0;
+let tuning = LEVELS[0];
 
 // Scale the Aswang's damage for its current level.
-const scaled = (m) => ({ ...m, dmg: Math.round(m.dmg * (1 + 0.35 * matchToughness)) });
+const scaled = (m) => ({ ...m, dmg: Math.max(1, Math.round(m.dmg * tuning.dmg)) });
 
 const game = {
   mode: 'title', // title | intro | fight | roundEnd | over
@@ -105,11 +113,11 @@ function startMatch() {
   game.planTrail = [];
   game.lastRead = '';
   observer.matchReset();
-  matchToughness = toughness();
-  aswang.maxHp = Math.round(120 + 30 * matchToughness);
-  brain.setToughness(matchToughness);
+  tuning = LEVELS[level() - 1];
+  aswang.maxHp = tuning.hp;
+  brain.setTuning(tuning);
   brain.setPlan('INSTINCT', []);
-  strategist.setToughness(matchToughness);
+  strategist.setCadence(tuning);
   strategist.newMatch();
   for (const id of ['title', 'over', 'pause']) $(id).hidden = true;
   startRound();

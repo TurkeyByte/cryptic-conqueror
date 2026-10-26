@@ -42,17 +42,16 @@ const FOCUS = {
   GUARD_MORE:     (p) => { p.guard = Math.max(p.guard, 0.7); },
 };
 
-// Toughness (0 at Level 1 up to 1 at the top level) shortens reaction time
-// and makes it react more readily and move faster.
+// Level tuning (see LEVELS in main.js): `think` scales reaction time,
+// `react` how readily it reacts, `speed` how fast it moves.
 const REACTIVE = ['antiAir', 'punish', 'punishDash', 'grab', 'guard', 'attack', 'pounce', 'spit'];
 
-export function buildProfile(intent, focus = [], toughness = 0) {
+export function buildProfile(intent, focus = [], tuning = { think: 1, react: 1, speed: 1 }) {
   const p = { ...BASE, ...(PROFILES[intent] || {}) };
   for (const f of focus) FOCUS[f]?.(p);
-  const t = Math.max(0, Math.min(1, toughness));
-  p.think *= 1 - 0.28 * t;
-  p.walkSpeed *= 1 + 0.12 * t;
-  for (const k of REACTIVE) p[k] = Math.min(0.95, p[k] * (1 + 0.3 * t));
+  p.think *= tuning.think;
+  p.walkSpeed *= tuning.speed;
+  for (const k of REACTIVE) p[k] = Math.min(0.95, p[k] * tuning.react);
   return p;
 }
 
@@ -75,11 +74,11 @@ export class AswangBrain {
   setPlan(intent, focus) {
     this.intent = intent;
     this.focus = focus;
-    this.p = buildProfile(intent, focus, this.toughness);
+    this.p = buildProfile(intent, focus, this.tuning);
   }
 
-  setToughness(t) {
-    this.toughness = t;
+  setTuning(tuning) {
+    this.tuning = tuning;
     this.setPlan(this.intent, this.focus);
   }
 
