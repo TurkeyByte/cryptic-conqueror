@@ -45,7 +45,7 @@ export const INTENT_COLORS = {
 // and the hut, palms and bamboo, which shift slightly as the fight moves
 // (parallax) for a sense of depth.
 const PAD = 70;          // extra width on parallax layers so edges never show
-const MID = 0.09;        // parallax factor for the hut/palms/bamboo layer
+const MID = 0.3;         // the hut/palms/bamboo layer follows the camera this much (appears farther away)
 const LANTERN = { x: 395, y: 300 };
 const MID_TOP = 95;      // topmost row on the palms/hut/bamboo layer
 let layers = null;
@@ -69,9 +69,9 @@ function buildSky() {
   const [c, g] = makeLayer(W, H);
   const r = rng(7);
   const sky = g.createLinearGradient(0, 0, 0, GROUND);
-  sky.addColorStop(0, '#070514');
-  sky.addColorStop(0.55, '#1b1236');
-  sky.addColorStop(1, '#3a1f3f');
+  sky.addColorStop(0, '#0e0a26');
+  sky.addColorStop(0.55, '#2a1c52');
+  sky.addColorStop(1, '#55305e');
   g.fillStyle = sky;
   g.fillRect(0, 0, W, H);
   for (let i = 0; i < 160; i++) {
@@ -108,7 +108,7 @@ function drawFarHills(g) {
   const w = W + PAD * 2;
   g.save();
   g.translate(-PAD, 0);
-  g.fillStyle = '#1a1030';
+  g.fillStyle = '#271a48';
   g.beginPath(); g.moveTo(0, 330);
   for (let x = 0; x <= w; x += 30) g.lineTo(x, 300 - Math.sin((x - PAD) * 0.008) * 50 - Math.sin((x - PAD) * 0.021) * 22);
   g.lineTo(w, GROUND); g.lineTo(0, GROUND); g.fill();
@@ -117,13 +117,13 @@ function drawFarHills(g) {
   g.beginPath();
   for (let x = 0; x <= w; x += 30) g.lineTo(x, 300 - Math.sin((x - PAD) * 0.008) * 50 - Math.sin((x - PAD) * 0.021) * 22);
   g.stroke();
-  g.fillStyle = '#140b24';
+  g.fillStyle = '#1e1338';
   g.beginPath(); g.moveTo(0, 380);
   for (let x = 0; x <= w; x += 24) g.lineTo(x, 360 - Math.sin((x - PAD) * 0.013 + 1) * 30 - Math.sin((x - PAD) * 0.04) * 8);
   g.lineTo(w, GROUND); g.lineTo(0, GROUND); g.fill();
   // Distant treeline silhouettes.
   const r = rng(11);
-  g.fillStyle = '#100820';
+  g.fillStyle = '#180f2e';
   for (let x = 0; x < w; x += 9) {
     const base = 372 - Math.sin((x - PAD) * 0.013 + 1) * 30;
     const h = 8 + r() * 16;
@@ -255,7 +255,7 @@ function buildMid() {
 function drawGround(g) {
   const r = rng(5);
   const gr = g.createLinearGradient(0, GROUND, 0, H);
-  gr.addColorStop(0, '#2b1a22'); gr.addColorStop(1, '#120a10');
+  gr.addColorStop(0, '#45293a'); gr.addColorStop(1, '#1d1119');
   g.fillStyle = gr; g.fillRect(0, GROUND, W, H - GROUND);
   // Pebbles and footprints in the packed earth.
   for (let i = 0; i < 90; i++) {
@@ -290,8 +290,8 @@ function cloud() {
     for (let i = 0; i < 14; i++) {
       const x = 30 + r() * 200, y = 40 + (r() - 0.5) * 30, rr = 18 + r() * 22;
       const cg = g.createRadialGradient(x, y, 2, x, y, rr);
-      cg.addColorStop(0, 'rgba(38,26,58,0.55)');
-      cg.addColorStop(1, 'rgba(38,26,58,0)');
+      cg.addColorStop(0, 'rgba(196,178,220,0.2)');
+      cg.addColorStop(1, 'rgba(196,178,220,0)');
       g.fillStyle = cg;
       g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
     }
@@ -301,12 +301,16 @@ function cloud() {
 }
 
 // Lantern position follows the hut's parallax layer.
-function lanternPos(camX = 0) {
-  return { x: LANTERN.x - camX * MID, y: LANTERN.y };
+function lanternPos(camShift = 0) {
+  return { x: LANTERN.x + camShift * MID, y: LANTERN.y };
 }
 
-export function drawArena(g, time, camX = 0) {
-  const scale = Math.min(3, Math.max(1, g.canvas.width / W));
+// camShift: how far the camera has panned from center (world px). The
+// parallax layer follows it partway, so it appears farther away than the fight.
+export function drawArena(g, time, camShift = 0) {
+  // Layers are built a little sharper than the screen so they stay crisp when
+  // the camera zooms in.
+  const scale = Math.min(3.5, Math.max(1, (g.canvas.width / W) * 1.32));
   if (!layers || layers.scale !== scale) {
     LAYER_SCALE = scale;
     const [composite, cg] = makeLayer(W, H);
@@ -316,16 +320,13 @@ export function drawArena(g, time, camX = 0) {
   // rebuilt only when the parallax offset moves by a whole pixel, so most
   // frames copy a single image.
   const k = scale;
-  const offset = Math.round(-PAD - camX * MID);
+  // Snapped to 2px steps so a slowly panning camera rebuilds it rarely.
+  const offset = Math.round((-PAD + camShift * MID) / 2) * 2;
   if (offset !== layers.offset) {
     const { cg } = layers;
     cg.setTransform(1, 0, 0, 1, 0, 0);
     cg.drawImage(layers.backdrop, 0, 0);
     cg.drawImage(layers.mid, offset * k, 0);
-    // The edge vignette is baked in here; fighters stay near the center,
-    // where it is fully transparent anyway.
-    cg.setTransform(k, 0, 0, k, 0, 0);
-    drawVignette(cg);
     layers.offset = offset;
   }
   g.drawImage(layers.composite, 0, 0, W * k, H * k, 0, 0, W, H);
@@ -337,8 +338,24 @@ export function drawArena(g, time, camX = 0) {
     g.drawImage(cloud(), x, 60 + i * 38, 300 - i * 40, 100 - i * 14);
   }
   g.globalAlpha = 1;
-  drawFireflies(g, time, camX);
+  drawFireflies(g, time, camShift);
   drawLeaves(g, time);
+}
+
+// A soft pool of light on the ground under the fighters so they read clearly.
+let stageLight = null;
+export function drawStageLight(g, x) {
+  if (!stageLight) {
+    const [c, sg] = makeLayer(256, 64, 1);
+    const gr = sg.createRadialGradient(128, 32, 4, 128, 32, 128);
+    gr.addColorStop(0, 'rgba(255,226,196,0.22)');
+    gr.addColorStop(1, 'rgba(255,226,196,0)');
+    sg.fillStyle = gr;
+    sg.setTransform(1, 0, 0, 0.25, 0, 24);
+    sg.fillRect(0, 0, 256, 256);
+    stageLight = c;
+  }
+  g.drawImage(stageLight, x - 300, GROUND - 40, 600, 90);
 }
 
 // A few leaves tumbling down through the scene.
@@ -358,7 +375,7 @@ function drawLeaves(g, time) {
   }
 }
 
-function drawFireflies(g, time, camX) {
+function drawFireflies(g, time, camShift) {
   for (let i = 0; i < 18; i++) {
     const x = (i * 131 + Math.sin(time * 0.5 + i) * 40 + time * (8 + i % 4)) % W;
     const y = 250 + ((i * 47) % 200) + Math.sin(time * 1.3 + i * 2) * 15;
@@ -367,7 +384,7 @@ function drawFireflies(g, time, camX) {
     g.beginPath(); g.arc(x, y, 1.8, 0, Math.PI * 2); g.fill();
   }
   // Swaying parol-style capiz lantern hanging from the hut.
-  const { x: lx } = lanternPos(camX);
+  const { x: lx } = lanternPos(camShift);
   const ly = LANTERN.y + Math.sin(time * 1.2) * 2;
   g.strokeStyle = '#2a1a22'; g.lineWidth = 1;
   g.beginPath(); g.moveTo(lx - 20, 255); g.lineTo(lx, ly - 12); g.stroke();
@@ -420,22 +437,6 @@ export function drawFog(g, time) {
   g.restore();
 }
 
-// Pre-rendered at low resolution; it is a smooth gradient, so upscaling is invisible.
-let vignette = null;
-function drawVignette(g) {
-  if (!vignette) {
-    vignette = document.createElement('canvas');
-    vignette.width = W / 4; vignette.height = H / 4;
-    const vg = vignette.getContext('2d');
-    vg.scale(0.25, 0.25);
-    const gr = vg.createRadialGradient(W / 2, H * 0.55, H * 0.35, W / 2, H * 0.55, W * 0.68);
-    gr.addColorStop(0, 'rgba(0,0,0,0)');
-    gr.addColorStop(1, 'rgba(0,0,0,0.55)');
-    vg.fillStyle = gr;
-    vg.fillRect(0, 0, W, H);
-  }
-  g.drawImage(vignette, 0, 0, W, H);
-}
 
 // ---------------- Skeleton helpers ----------------
 // Cartoon style: everything is bold flat color with a thick ink outline.
@@ -1168,6 +1169,17 @@ function bar(g, x, y, w, h, frac, shown, color, flip) {
   g.fillRect(x, y, w, h / 3);
 }
 
+// HUD text with a dark ink outline so it reads over the bright moon or anything else.
+function inkText(g, text, x, y) {
+  g.save();
+  g.strokeStyle = OL;
+  g.lineWidth = 4;
+  g.lineJoin = 'round';
+  g.strokeText(text, x, y);
+  g.restore();
+  g.fillText(text, x, y);
+}
+
 export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score, intent, focus, aswangName = 'ASWANG', level = 1 }) {
   const bw = 360;
   bar(g, 30, 26, bw, 18, player.hp / player.maxHp, shownP, '#e0b040', true);
@@ -1175,9 +1187,9 @@ export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score
   g.font = 'bold 14px system-ui, sans-serif';
   g.fillStyle = '#f2e6d0';
   g.textAlign = 'left';
-  g.fillText('DAKILA · Kali', 30, 62);
+  inkText(g, 'DAKILA · Kali', 30, 62);
   g.textAlign = 'right';
-  g.fillText(aswangName, W - 30, 62);
+  inkText(g, aswangName, W - 30, 62);
   // Round pips.
   for (let i = 0; i < 2; i++) {
     g.fillStyle = i < score.player ? '#e0b040' : 'rgba(255,255,255,0.15)';
@@ -1194,10 +1206,10 @@ export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score
   g.fillText(String(Math.ceil(timer)), W / 2, 48);
   g.font = 'bold 10px system-ui, sans-serif';
   g.fillStyle = '#c9b8a0';
-  g.fillText(`ROUND ${round}`, W / 2, 74);
+  inkText(g, `ROUND ${round}`, W / 2, 74);
   if (level > 1) {
     g.fillStyle = level >= 5 ? '#ff5a64' : '#c084fc';
-    g.fillText(`LEVEL ${level}`, W / 2, 87);
+    inkText(g, `LEVEL ${level}`, W / 2, 87);
   }
 
   // Intent tag under the Aswang's bar, so the adaptation is visible in-arena too.

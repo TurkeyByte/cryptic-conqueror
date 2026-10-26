@@ -8,7 +8,7 @@ import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
   drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog,
-  drawManananggal, drawLegs,
+  drawManananggal, drawLegs, drawStageLight,
 } from './render.js';
 
 const ROUND_TIME = 60;
@@ -57,6 +57,32 @@ let tuning = LEVELS[0];
 
 // Scale the Aswang's damage for its current level.
 const scaled = (m) => ({ ...m, dmg: Math.max(1, Math.round(m.dmg * tuning.dmg)) });
+
+// Fighting-game camera: follows the fight and zooms in when the fighters are
+// close (up to MAX_ZOOM), easing back out so both always stay on screen.
+const MAX_ZOOM = 1.32;
+const cam = { x: W / 2, z: 1 };
+
+function updateCamera(dt) {
+  const fighting = game.mode !== 'title' && game.mode !== 'over';
+  const dist = Math.abs(player.x - aswang.x);
+  const tz = fighting ? Math.max(1, Math.min(MAX_ZOOM, (W - 220) / (dist + 330))) : 1;
+  cam.z += (tz - cam.z) * Math.min(1, dt * 3);
+  const half = W / (2 * cam.z);
+  const tx = Math.max(half, Math.min(W - half, (player.x + aswang.x) / 2));
+  cam.x += (tx - cam.x) * Math.min(1, dt * 5);
+  cam.x = Math.max(half, Math.min(W - half, cam.x));
+}
+
+// Where the ground line sits on screen: lower as the camera zooms in, so the
+// extra size goes to the fighters rather than the dirt.
+const groundScreenY = () => GROUND + ((cam.z - 1) / (MAX_ZOOM - 1)) * 38;
+
+function applyCamera() {
+  g.translate(W / 2, groundScreenY());
+  g.scale(cam.z, cam.z);
+  g.translate(-cam.x, -GROUND);
+}
 
 const game = {
   mode: 'title', // title | intro | fight | roundEnd | over
@@ -413,6 +439,7 @@ function separate() {
 // ---------------- Main update ----------------
 function update(dt) {
   game.time += dt;
+  updateCamera(dt);
   input.update();
   game.thought && (game.thought.t -= dt);
   game.shake = Math.max(0, game.shake - dt);
@@ -507,7 +534,7 @@ const layer = document.createElement('canvas');
 const lg = layer.getContext('2d');
 function drawFighter(f, paint) {
   if (!(f.flash > 0) && !f.ghosts?.length) { paint(g); return; }
-  const sx = Math.min(canvas.width / W, 2);
+  const sx = Math.min((canvas.width / W) * cam.z, 2.6);
   const lw = Math.ceil(BOX.w * sx), lh = Math.ceil(BOX.h * sx);
   if (layer.width !== lw || layer.height !== lh) { layer.width = lw; layer.height = lh; }
   const rx = f.x - BOX.left, ry = f.y - BOX.up;
@@ -534,15 +561,15 @@ function draw() {
   g.save();
   if (game.shake > 0) g.translate((Math.random() - 0.5) * game.shake * 40, (Math.random() - 0.5) * game.shake * 30);
   if (game.zoom > 0) {
-    // Camera punch-in on big hits, centered between the fighters.
-    const cx = (player.x + aswang.x) / 2, cy = GROUND - 90;
+    // Camera punch-in on big hits.
+    const cx = W / 2, cy = H * 0.62;
     g.translate(cx, cy);
     g.scale(1 + game.zoom, 1 + game.zoom);
     g.translate(-cx, -cy);
   }
-  // Parallax follows the midpoint of the fight.
-  const camX = (player.x + aswang.x) / 2 - W / 2;
-  drawArena(g, game.time, camX);
+  applyCamera();
+  drawArena(g, game.time, cam.x - W / 2);
+  drawStageLight(g, (player.x + aswang.x) / 2);
   drawShadow(g, player);
   drawShadow(g, aswang);
   if (game.legs) drawLegs(g, game.legs, game.time);
@@ -566,7 +593,10 @@ function draw() {
 
   if (game.mode !== 'title') {
     drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus, level: level(), aswangName: aswang.form === 'manananggal' ? 'MANANANGGAL' : 'ASWANG' });
-    if (game.mode === 'fight') drawThought(g, aswang, game.thought);
+    // The bubble is drawn in screen space, anchored to where the Aswang is on screen.
+    const ax = (aswang.x - cam.x) * cam.z + W / 2;
+    const ay = (aswang.y - GROUND) * cam.z + groundScreenY();
+    if (game.mode === 'fight') drawThought(g, { x: ax, y: ay - 190 * (cam.z - 1) }, game.thought);
     if ((game.mode === 'intro' || game.mode === 'fight') && game.hintT > 0) drawControlsHint(g, Math.min(1, game.hintT / 2));
   }
   if (game.banner && (game.mode === 'intro' || game.mode === 'fight' || game.mode === 'roundEnd')) {
