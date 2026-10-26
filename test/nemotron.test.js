@@ -70,3 +70,9 @@ test('handler reports offline without a key and surfaces upstream errors', async
   const bad = await strategy({}, 'c3', { NEBIUS_API_KEY: 'k' });
   assert.equal(bad.status, 400);
 });
+
+test('replaces move codes with plain names in on-screen text', () => {
+  const s = parseStrategy(JSON.stringify({ ...good, observe: 'You keep using redonda: 2 hits', adapt: 'I will punish your witik and Lusob' }));
+  assert.equal(s.observe, 'You keep using spin attack: 2 hits');
+  assert.equal(s.adapt, 'I will punish your quick strike and jump attack');
+});
