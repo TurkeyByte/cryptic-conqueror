@@ -139,6 +139,7 @@ The adaptation shows up in three places: the Aswang Mind panel, a callout over t
 ## Art, audio, and IP
 
 - All characters, the arena, and effects are **drawn procedurally in code** (`public/js/render.js`) in a bold, silly-but-cool cartoon style: thick ink outlines, flat colors, big expressive faces, squash and stretch. No sprite sheets or images from other works.
+- **Two art styles** (🎨 button at the top): *Pixel art* draws the fight at a third of the resolution and scales it up with hard pixels, over a moonlit village with a balete tree, nipa huts on a river and a small kapilya, painted in code with a fixed palette (`public/js/pixel.js`). *Cartoon* is the original smooth ink-outline look.
 - All audio is **synthesized at runtime** with WebAudio (`public/js/audio.js`). No recorded or licensed music.
 - The Aswang and Kali / Eskrima / Arnis belong to Philippine folklore and martial heritage. Dakila and this Aswang's design are our own interpretations.
 - Dakila's look is original: a hoodie, jeans and sneakers, with a red *putong* (headband) and a woven bracelet as nods to his heritage.

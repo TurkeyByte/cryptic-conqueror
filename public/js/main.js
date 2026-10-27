@@ -5,6 +5,7 @@ import { Observer } from './observer.js';
 import { Strategist } from './strategist.js';
 import { Memory, summarizeMatch } from './memory.js';
 import { sfx, unlockAudio, toggleMute } from './audio.js';
+import { drawPixelArena, crispAlpha, PIX } from './pixel.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
   drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog,
@@ -32,6 +33,17 @@ const ROUNDS_TO_WIN = 2;
 
 const canvas = document.getElementById('game');
 const g = canvas.getContext('2d');
+// Art style: 'pixel' draws the fight at low resolution and scales it up with
+// hard pixels; 'cartoon' is the original smooth ink-outline look.
+let artStyle = 'pixel';
+try { artStyle = localStorage.getItem('cc_style') || 'pixel'; } catch {}
+const low = document.createElement('canvas');
+low.width = W / PIX; low.height = H / PIX;
+const lowG = low.getContext('2d');
+// Fighters get their own small layer so their edges can be hardened to pixels.
+const figs = document.createElement('canvas');
+figs.width = W / PIX; figs.height = H / PIX;
+const figG = figs.getContext('2d', { willReadFrequently: true });
 const $ = (id) => document.getElementById(id);
 
 function resize() {
@@ -78,7 +90,7 @@ function updateCamera(dt) {
 // extra size goes to the fighters rather than the dirt.
 const groundScreenY = () => GROUND + ((cam.z - 1) / (MAX_ZOOM - 1)) * 38;
 
-function applyCamera() {
+function applyCamera(g) {
   g.translate(W / 2, groundScreenY());
   g.scale(cam.z, cam.z);
   g.translate(-cam.x, -GROUND);
@@ -532,9 +544,9 @@ function recordGhosts(f, dt) {
 const BOX = { left: 230, up: 340, w: 460, h: 380 };
 const layer = document.createElement('canvas');
 const lg = layer.getContext('2d');
-function drawFighter(f, paint) {
+function drawFighter(g, k, f, paint) {
   if (!(f.flash > 0) && !f.ghosts?.length) { paint(g); return; }
-  const sx = Math.min((canvas.width / W) * cam.z, 2.6);
+  const sx = Math.min(k * cam.z, 2.6);
   const lw = Math.ceil(BOX.w * sx), lh = Math.ceil(BOX.h * sx);
   if (layer.width !== lw || layer.height !== lh) { layer.width = lw; layer.height = lh; }
   const rx = f.x - BOX.left, ry = f.y - BOX.up;
@@ -557,7 +569,7 @@ function drawFighter(f, paint) {
   g.drawImage(layer, rx, ry, BOX.w, BOX.h);
 }
 
-function draw() {
+function drawWorld(g, k, pixel) {
   g.save();
   if (game.shake > 0) g.translate((Math.random() - 0.5) * game.shake * 40, (Math.random() - 0.5) * game.shake * 30);
   if (game.zoom > 0) {
@@ -567,11 +579,19 @@ function draw() {
     g.scale(1 + game.zoom, 1 + game.zoom);
     g.translate(-cx, -cy);
   }
-  applyCamera();
-  drawArena(g, game.time, cam.x - W / 2);
+  applyCamera(g);
+  if (pixel) drawPixelArena(g, game.time, cam.x - W / 2);
+  else drawArena(g, game.time, cam.x - W / 2);
   drawStageLight(g, (player.x + aswang.x) / 2);
   drawShadow(g, player);
   drawShadow(g, aswang);
+  const world = g;
+  if (pixel) {
+    figG.setTransform(1, 0, 0, 1, 0, 0);
+    figG.clearRect(0, 0, figs.width, figs.height);
+    figG.setTransform(g.getTransform());
+    g = figG;
+  }
   if (game.legs) drawLegs(g, game.legs, game.time);
   const eye = INTENT_COLORS[brain.intent];
   const aura = game.thought?.changed ? Math.max(0, (game.thought.t - (game.thought.life - 1.4)) / 1.4) : 0;
@@ -580,12 +600,32 @@ function draw() {
     : (c) => drawAswang(c, aswang, game.time, eye, aura);
   const paintP = (c) => drawPlayer(c, player, game.time);
   // Draw whoever is attacking on top.
-  if (aswang.state === 'attack') { drawFighter(player, paintP); drawFighter(aswang, paintA); }
-  else { drawFighter(aswang, paintA); drawFighter(player, paintP); }
+  if (aswang.state === 'attack') { drawFighter(g, k, player, paintP); drawFighter(g, k, aswang, paintA); }
+  else { drawFighter(g, k, aswang, paintA); drawFighter(g, k, player, paintP); }
   for (const pr of game.projectiles) drawProjectile(g, pr, game.time);
+  if (pixel) {
+    crispAlpha(figs);
+    g = world;
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+    g.drawImage(figs, 0, 0);
+    g.restore();
+  }
   drawFog(g, game.time);
   drawParticles(g, game.particles);
   g.restore();
+}
+
+function draw() {
+  const pixel = artStyle === 'pixel';
+  // In pixel style the world is drawn onto the small canvas, then scaled up.
+  const c = pixel ? lowG : g;
+  if (pixel) lowG.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
+  drawWorld(c, pixel ? 1 / PIX : canvas.width / W, pixel);
+  if (pixel) {
+    g.imageSmoothingEnabled = false;
+    g.drawImage(low, 0, 0, W, H);
+    g.imageSmoothingEnabled = true;
+  }
   if (game.flash > 0) {
     g.fillStyle = `rgba(255,245,230,${Math.min(0.5, game.flash * 1.6)})`;
     g.fillRect(0, 0, W, H);
@@ -625,6 +665,13 @@ $('start').addEventListener('click', startMatch);
 $('rematch').addEventListener('click', startMatch);
 $('resume').addEventListener('click', () => setPaused(false));
 $('quit').addEventListener('click', () => { setPaused(false); game.mode = 'title'; $('title').hidden = false; });
+function setStyle(st) {
+  artStyle = st;
+  try { localStorage.setItem('cc_style', st); } catch {}
+  $('style').textContent = st === 'pixel' ? '🎨 Pixel art' : '🎨 Cartoon';
+}
+setStyle(artStyle);
+$('style').addEventListener('click', () => setStyle(artStyle === 'pixel' ? 'cartoon' : 'pixel'));
 $('mute').addEventListener('click', () => { $('mute').textContent = toggleMute() ? '🔇 Sound off' : '🔊 Sound on'; });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape' || e.code === 'KeyP') setPaused(!game.paused);
