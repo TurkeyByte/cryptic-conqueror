@@ -285,7 +285,19 @@ function sparks(x, y, color, n = 12, speed = 380) {
     game.particles.push({ kind: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0.3, life: 0.3, color });
   }
   game.particles.push({ kind: 'ring', x, y, r: 40, t: 0.25, life: 0.25, color });
-  game.particles.push({ kind: 'star', x, y, vx: 0, vy: 0, r: n > 12 ? 46 : 30, rot: Math.random(), t: 0.13, life: 0.13, color: '#fffbe8' });
+  game.particles.push({ kind: 'glow', x, y, vx: 0, vy: 0, g: 0, r: n > 12 ? 120 : 80, t: 0.16, life: 0.16, color });
+  game.particles.push({ kind: 'burst', x, y, vx: 0, vy: 0, g: 0, r: n > 12 ? 70 : 48, rot: Math.random(), t: 0.14, life: 0.14 });
+  game.particles.push({ kind: 'star', x, y, vx: 0, vy: 0, g: 0, r: n > 12 ? 46 : 30, rot: Math.random(), t: 0.13, life: 0.13, color: '#fffbe8' });
+}
+// Comic sound-effect word over a solid hit (PAK and BOG are Filipino hit sounds).
+const HIT_WORDS = { player: ['PAK!', 'BOG!', 'WHAK!', 'THWACK!'], aswang: ['SHRAK!', 'RAKK!', 'GRAH!'] };
+function hitWord(x, y, who, big) {
+  game.particles = game.particles.filter((p) => p.kind !== 'text');
+  const words = HIT_WORDS[who];
+  game.particles.push({
+    kind: 'text', text: words[Math.floor(Math.random() * words.length)], x, y: y - 62, vx: 0, vy: -70, g: 0,
+    size: big ? 40 : 30, rot: (Math.random() - 0.5) * 0.4, t: 0.55, life: 0.55, color: who === 'player' ? '#ffd23f' : '#ff5a64',
+  });
 }
 // Green bile splattering off a block.
 function splat(x, y, n = 14) {
@@ -332,6 +344,7 @@ function resolve(att, def, who) {
   game.zoom = m.dmg >= 11 ? 0.045 : 0.02;
   if (m.dmg >= 11) game.flash = 0.12;
   sparks(px, py, who === 'player' ? '#ffe39a' : '#ff6a6a', m.dmg >= 11 ? 18 : 11);
+  if (m.dmg >= 8) hitWord(px, py, who, m.dmg >= 11);
   (who === 'player' ? sfx.stickHit : sfx.clawHit)();
   observer.contact(who, att.moveName, 'hit', dm.dmg);
 }
@@ -447,7 +460,7 @@ function update(dt) {
   game.flash = Math.max(0, (game.flash || 0) - dt);
   recordGhosts(player, dt);
   recordGhosts(aswang, dt);
-  for (const p of game.particles) { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; }
+  for (const p of game.particles) { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g ?? 600) * dt; }
   game.particles = game.particles.filter((p) => p.t > 0);
   game.shownP = Math.max(player.hp / player.maxHp, game.shownP - dt * 0.35);
   game.shownA = Math.max(aswang.hp / aswang.maxHp, game.shownA - dt * 0.35);

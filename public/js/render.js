@@ -454,7 +454,20 @@ function noodleFill(g, pts, w, color) {
   g.strokeStyle = color; g.lineWidth = w;
   g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
 }
-function noodle(g, pts, w, color) { noodleOutline(g, pts, w); noodleFill(g, pts, w, color); }
+// A thin soft highlight along the upper edge gives limbs some roundness.
+function noodleShine(g, pts, w) {
+  g.strokeStyle = 'rgba(255,255,255,0.15)'; g.lineWidth = Math.max(1.5, w * 0.28);
+  g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y - w * 0.2) : g.moveTo(x, y - w * 0.2))); g.stroke();
+}
+function noodle(g, pts, w, color) { noodleOutline(g, pts, w); noodleFill(g, pts, w, color); if (w >= 7) noodleShine(g, pts, w); }
+
+// Moonlight catching the top-front of a rounded shape (clipped to the shape).
+function shine(g, path, x, y, r, alpha = 0.22) {
+  g.save(); path(); g.clip();
+  g.fillStyle = `rgba(255,246,230,${alpha})`;
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  g.restore();
+}
 
 // Fill a shape with an ink outline (the outer half of the stroke shows).
 function inked(g, path, color, lw = OLW * 2) {
@@ -598,6 +611,8 @@ export function drawPlayer(g, f, time) {
   g.save(); body(); g.clip();
   g.fillStyle = HOOD_D; g.fillRect(-30, -TORSO - 10, 13, TORSO + 30);
   g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(8, -TORSO, 6, TORSO);
+  g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.ellipse(6, -TORSO + 4, 12, 7, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(-20, -4, 40, 10);
   g.restore();
   g.strokeStyle = OL; g.lineWidth = 2.2;
   g.beginPath(); g.moveTo(-9, -2); g.lineTo(-7, -16); g.lineTo(9, -16); g.lineTo(11, -2); g.stroke();
@@ -622,6 +637,7 @@ export function drawPlayer(g, f, time) {
   g.save(); ellipsePath(g, hx, hy, HEAD, HEAD * 1.02)(); g.clip();
   g.fillStyle = SKIN_D; g.beginPath(); g.arc(hx - 14, hy + 6, 16, 0, Math.PI * 2); g.fill();
   g.restore();
+  shine(g, ellipsePath(g, hx, hy, HEAD, HEAD * 1.02), hx + 9, hy - 9, 10);
   inked(g, () => {
     g.beginPath();
     g.moveTo(hx - HEAD - 1, hy + 2);
@@ -784,6 +800,7 @@ function aswangHead(g, f, time, eyeColor, aura, hx, hy, headA) {
   g.save(); ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12)(); g.clip();
   g.fillStyle = SKIN_D; g.beginPath(); g.arc(-14, 8, 16, 0, Math.PI * 2); g.fill();
   g.restore();
+  shine(g, ellipsePath(g, 2, 2, HEAD * 0.9, HEAD * 1.1, 0.12), 12, -10, 10, 0.2);
   // Hair fringe.
   inked(g, () => { g.beginPath(); g.moveTo(-19, 2); g.quadraticCurveTo(-16, -24, 6, -22); g.lineTo(2, -15); g.lineTo(-4, -19); g.lineTo(-8, -11); g.lineTo(-12, -15); g.lineTo(-14, 0); g.closePath(); }, HAIR);
   // Eyes: hollow black sockets with tiny pupils glowing in the intent color
@@ -910,6 +927,7 @@ export function drawAswang(g, f, time, eyeColor, aura = 0) {
   inked(g, robe, ROBE);
   g.save(); robe(); g.clip();
   g.fillStyle = ROBE_D; g.fillRect(-22, -TORSO - 10, 12, TORSO + 40);
+  g.fillStyle = 'rgba(220,190,255,0.14)'; g.fillRect(9, -TORSO, 5, TORSO + 4);
   g.restore();
   inked(g, ellipsePath(g, 3, -TORSO + 22, 8, 12, 0.1), SKIN, 4);
   g.strokeStyle = OL; g.lineWidth = 2;
@@ -1123,6 +1141,21 @@ export function drawShadow(g, f) {
   g.beginPath(); g.ellipse(f.x, GROUND + 3, 34 * s, 7 * s, 0, 0, Math.PI * 2); g.fill();
 }
 
+const glowSprites = new Map();
+function glowSprite(color) {
+  if (!glowSprites.has(color)) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const cg = c.getContext('2d');
+    const gr = cg.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, hexA(color.length === 7 ? color : '#ffffff', 0.55));
+    gr.addColorStop(1, hexA(color.length === 7 ? color : '#ffffff', 0));
+    cg.fillStyle = gr; cg.fillRect(0, 0, 128, 128);
+    glowSprites.set(color, c);
+  }
+  return glowSprites.get(color);
+}
+
 export function drawParticles(g, parts) {
   for (const p of parts) {
     g.globalAlpha = Math.max(0, p.t / p.life);
@@ -1142,6 +1175,38 @@ export function drawParticles(g, parts) {
       g.strokeStyle = OL; g.lineWidth = 4; g.lineJoin = 'round';
       g.stroke();
       g.fill();
+    } else if (p.kind === 'burst') {
+      // Comic speed lines bursting out from the hit.
+      const k = 1 - p.t / p.life, r0 = p.r * (0.45 + k * 0.4), r1 = p.r * (0.95 + k * 0.5);
+      g.lineCap = 'round';
+      for (const [col, w] of [[OL, 6], ['#fffbe8', 3]]) {
+        g.strokeStyle = col; g.lineWidth = w;
+        g.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const a = p.rot + (i * Math.PI * 2) / 10, len = i % 2 ? 0.75 : 1;
+          g.moveTo(p.x + Math.cos(a) * r0, p.y + Math.sin(a) * r0);
+          g.lineTo(p.x + Math.cos(a) * r1 * len, p.y + Math.sin(a) * r1 * len);
+        }
+        g.stroke();
+      }
+    } else if (p.kind === 'glow') {
+      // A flash of light where the hit lands.
+      g.globalCompositeOperation = 'lighter';
+      g.drawImage(glowSprite(p.color), p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+      g.globalCompositeOperation = 'source-over';
+    } else if (p.kind === 'text') {
+      const k = 1 - p.t / p.life;
+      const pop = k < 0.15 ? 0.6 + (k / 0.15) * 0.6 : 1.2 - Math.min(0.2, (k - 0.15) * 1.5);
+      g.globalAlpha = Math.min(1, (p.t / p.life) * 3);
+      g.save();
+      g.translate(p.x, p.y); g.rotate(p.rot); g.scale(pop, pop);
+      g.font = `900 ${p.size}px system-ui, sans-serif`;
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      g.strokeStyle = OL; g.lineWidth = 8; g.strokeText(p.text, 0, 0);
+      g.fillStyle = p.color; g.fillText(p.text, 0, 0);
+      g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillText(p.text, -1.5, -2.5);
+      g.fillStyle = p.color; g.fillText(p.text, 0, 0.5);
+      g.restore();
     } else if (p.kind === 'ring') {
       g.strokeStyle = p.color; g.lineWidth = 3;
       g.beginPath(); g.arc(p.x, p.y, (1 - p.t / p.life) * p.r, 0, Math.PI * 2); g.stroke();
