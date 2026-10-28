@@ -659,6 +659,8 @@ function setPaused(p) {
   if (!['intro', 'fight', 'roundEnd'].includes(game.mode)) return;
   game.paused = p;
   $('pause').hidden = !p;
+  $('pause').classList.remove('clean');
+  $('pausebtn').textContent = p ? '▶ Resume' : '⏸ Pause';
 }
 
 $('start').addEventListener('click', startMatch);
@@ -672,10 +674,14 @@ function setStyle(st) {
 }
 setStyle(artStyle);
 $('style').addEventListener('click', () => setStyle(artStyle === 'pixel' ? 'cartoon' : 'pixel'));
+// The header button blurs itself so Space/Enter keep going to the game.
+$('pausebtn').addEventListener('click', (e) => { setPaused(!game.paused); e.currentTarget.blur(); });
 $('mute').addEventListener('click', () => { $('mute').textContent = toggleMute() ? '🔇 Sound off' : '🔊 Sound on'; });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape' || e.code === 'KeyP') setPaused(!game.paused);
   if (e.code === 'KeyM') $('mute').click();
+  // While paused, H hides the menu for a clean freeze-frame (video, screenshots).
+  if (e.code === 'KeyH' && game.paused) $('pause').classList.toggle('clean');
   if (e.code === 'Enter' && (game.mode === 'title' || game.mode === 'over')) startMatch();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });

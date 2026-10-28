@@ -117,6 +117,10 @@ button.ghost:hover { border-color: var(--muted); }
   background: radial-gradient(70% 70% at 50% 50%, rgba(10, 6, 16, 0.75), rgba(10, 6, 16, 0.92));
 }
 .overlay[hidden] { display: none; }
+/* Paused with the menu hidden: the frozen fight shows through untouched. */
+#pause.clean { background: none; }
+#pause.clean > * { visibility: hidden; }
+.pause-tip { font-size: 13px; margin-top: 6px; }
 .overlay h1 {
   margin: 0;
   display: flex;
