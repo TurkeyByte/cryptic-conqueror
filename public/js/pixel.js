@@ -70,13 +70,45 @@ function crisp(c) {
   return c;
 }
 
-// Per-frame version for the fighters: only hardens edges (alpha on/off) so
-// they read as pixel art without touching their colors.
-export function crispAlpha(c) {
+// The fighters' own colors (from render.js), so their pixels can be snapped
+// back to flat colors after being drawn small. Without this, smoothed edges
+// inside the characters leave in-between colors that look blurry when scaled up.
+const FIGHTER_PAL = [
+  // the Aswang's eye colors for each strategy (they change with its plan)
+  '#d9ec9c', '#ff4d4d', '#5fa8ff', '#ffd23f', '#7dff9a', '#ff8bd1', '#ff8a3d', '#b9a3ff',
+  '#07030a', '#120a1a', '#140a16', '#1a1212', '#1f3563', '#29467e', '#2a1840', '#2c4a9c', '#3a0a14', '#3a0d14',
+  '#3a2450', '#3b2257', '#3c63c9', '#5a1414', '#5a3584', '#7a8c66', '#8fd16a', '#8fe05a', '#9c6d2e', '#9fb487',
+  '#a8977f', '#b67d4c', '#b6f26e', '#c084fc', '#c43a6a', '#c9b8a0', '#d29a66', '#d4262f', '#e0262f', '#e0b040',
+  '#e3b867', '#e8ffd0', '#f0b83a', '#f2e6d0', '#f4f1ea', '#f6efdc', '#ff5a64', '#ff6b6b', '#fff8e8', '#fffbe8',
+  '#ffffff',
+].map(hexRgb);
+const fighterCache = new Map();
+
+// Per-frame version for the fighters: edges become on/off and every pixel
+// takes the nearest of the fighters' own colors.
+export function crispFighters(c) {
   const g = c.getContext('2d');
   const img = g.getImageData(0, 0, c.width, c.height);
   const d = img.data;
-  for (let i = 3; i < d.length; i += 4) if (d[i]) d[i] = d[i] < 110 ? 0 : 255;
+  if (fighterCache.size > 60000) fighterCache.clear();
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3];
+    if (!a) continue;
+    if (a < 110) { d[i + 3] = 0; continue; }
+    d[i + 3] = 255;
+    const r = d[i], gg = d[i + 1], b = d[i + 2];
+    const key = (r << 16) | (gg << 8) | b;
+    let p = fighterCache.get(key);
+    if (!p) {
+      let best = Infinity;
+      for (const q of FIGHTER_PAL) {
+        const e = (q[0] - r) ** 2 + (q[1] - gg) ** 2 + (q[2] - b) ** 2;
+        if (e < best) { best = e; p = q; }
+      }
+      fighterCache.set(key, p);
+    }
+    d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2];
+  }
   g.putImageData(img, 0, 0);
 }
 

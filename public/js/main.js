@@ -5,7 +5,7 @@ import { Observer } from './observer.js';
 import { Strategist } from './strategist.js';
 import { Memory, summarizeMatch } from './memory.js';
 import { sfx, unlockAudio, toggleMute } from './audio.js';
-import { drawPixelArena, crispAlpha, PIX } from './pixel.js';
+import { drawPixelArena, crispFighters, PIX } from './pixel.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
   drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog,
@@ -604,7 +604,7 @@ function drawWorld(g, k, pixel) {
   else { drawFighter(g, k, aswang, paintA); drawFighter(g, k, player, paintP); }
   for (const pr of game.projectiles) drawProjectile(g, pr, game.time);
   if (pixel) {
-    crispAlpha(figs);
+    crispFighters(figs);
     g = world;
     g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
     g.drawImage(figs, 0, 0);
