@@ -15,6 +15,7 @@
       <span class="tag">Monsters That Learn</span>
     </div>
     <div class="top-actions">
+      <button id="pausebtn" class="ghost" title="Pause (P or Esc)">⏸ Pause</button>
       <button id="mute" class="ghost">🔊 Sound on</button>
     </div>
   </header>
@@ -46,6 +47,7 @@
         <h2>Paused</h2>
         <button id="resume" class="primary">▶ Resume</button>
         <button id="quit" class="ghost">Quit to title</button>
+        <p class="muted pause-tip"><kbd>P</kbd> or <kbd>Esc</kbd> resumes · <kbd>H</kbd> hides this menu for a clean freeze-frame</p>
       </div>
 
       <div class="overlay" id="over" hidden>
@@ -115,7 +117,7 @@
     <div>Jump + attack together: <span class="muted">jump strike</span></div>
     <div>Crouch + attack: <span class="muted">low sweep</span></div>
     <div><kbd>Shift</kbd> dash <span class="muted">dodge</span></div>
-    <div><kbd>P</kbd> pause · <kbd>M</kbd> mute</div>
+    <div><kbd>P</kbd> pause (<kbd>H</kbd> hides the menu) · <kbd>M</kbd> mute</div>
     <div class="muted">Controller supported</div>
   </section>
 
