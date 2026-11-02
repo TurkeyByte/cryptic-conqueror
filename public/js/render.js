@@ -65,42 +65,55 @@ function makeLayer(w, h, scale = LAYER_SCALE) {
   return [c, g];
 }
 
+// Retro arcade night sky: stepped bands from deep indigo down to a crimson
+// horizon (in the spirit of 80s action games, drawn smooth rather than in
+// pixels), a big blood moon with thin dark clouds across it.
 function buildSky() {
   const [c, g] = makeLayer(W, H);
   const r = rng(7);
-  const sky = g.createLinearGradient(0, 0, 0, GROUND);
-  sky.addColorStop(0, '#0e0a26');
-  sky.addColorStop(0.55, '#2a1c52');
-  sky.addColorStop(1, '#55305e');
-  g.fillStyle = sky;
-  g.fillRect(0, 0, W, H);
-  for (let i = 0; i < 160; i++) {
-    g.fillStyle = `rgba(255,255,240,${0.2 + r() * 0.6})`;
+  const bands = ['#07061a', '#0d0a28', '#160d36', '#221042', '#33124a', '#4a144c', '#651848', '#842042', '#a52c3c', '#c43e36'];
+  const top = 0, bottom = 330, bh = (bottom - top) / bands.length;
+  bands.forEach((col, i) => {
+    const y = top + i * bh;
+    const gr = g.createLinearGradient(0, y, 0, y + bh);
+    gr.addColorStop(0, col); gr.addColorStop(1, bands[Math.min(bands.length - 1, i + 1)]);
+    g.fillStyle = gr; g.fillRect(0, y, W, bh + 1);
+    // A thin darker seam between bands keeps the stepped, retro look.
+    if (i) { g.fillStyle = 'rgba(0,0,0,0.07)'; g.fillRect(0, y, W, 1.5); }
+  });
+  g.fillStyle = '#d4503a'; g.fillRect(0, bottom, W, H - bottom);
+  for (let i = 0; i < 140; i++) {
+    const y = r() * 200;
+    g.fillStyle = `rgba(255,240,230,${(0.25 + r() * 0.6) * (1 - y / 230)})`;
     const sz = r() < 0.1 ? 2 : 1;
-    g.fillRect(r() * W, r() * 300, sz, sz);
+    g.fillRect(r() * W, y, sz, sz);
   }
-  // Blood-tinged full moon with soft craters and a lit rim.
-  const mx = 700, my = 110;
-  const halo = g.createRadialGradient(mx, my, 30, mx, my, 210);
-  halo.addColorStop(0, 'rgba(255,200,170,0.38)');
-  halo.addColorStop(1, 'rgba(255,200,170,0)');
+  // Blood moon.
+  const mx = 700, my = 128, mr = 72;
+  const halo = g.createRadialGradient(mx, my, mr * 0.6, mx, my, 260);
+  halo.addColorStop(0, 'rgba(255,120,90,0.45)');
+  halo.addColorStop(1, 'rgba(255,120,90,0)');
   g.fillStyle = halo;
   g.fillRect(0, 0, W, H);
-  const body = g.createRadialGradient(mx - 14, my - 16, 8, mx, my, 58);
-  body.addColorStop(0, '#fff0dc');
-  body.addColorStop(0.7, '#f3d6b8');
-  body.addColorStop(1, '#d9b292');
+  const body = g.createRadialGradient(mx - 20, my - 22, 8, mx, my, mr);
+  body.addColorStop(0, '#ffd2a8');
+  body.addColorStop(0.55, '#ff8a5c');
+  body.addColorStop(1, '#d4442e');
   g.fillStyle = body;
-  g.beginPath(); g.arc(mx, my, 56, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = 'rgba(20,10,22,0.85)'; g.lineWidth = 3.5;
+  g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(20,6,16,0.85)'; g.lineWidth = 4;
   g.stroke();
-  [[-18, -12, 12], [14, 8, 9], [-6, 20, 7], [20, -20, 6], [-26, 14, 5], [4, -30, 4]].forEach(([dx, dy, rr]) => {
-    const cg = g.createRadialGradient(mx + dx + 2, my + dy + 2, 1, mx + dx, my + dy, rr);
-    cg.addColorStop(0, 'rgba(190,140,120,0.45)');
-    cg.addColorStop(1, 'rgba(190,140,120,0.08)');
-    g.fillStyle = cg;
+  [[-24, -16, 15], [18, 10, 11], [-8, 26, 9], [26, -26, 8], [-34, 18, 6], [6, -38, 5]].forEach(([dx, dy, rr]) => {
+    g.fillStyle = 'rgba(170,40,30,0.35)';
     g.beginPath(); g.arc(mx + dx, my + dy, rr, 0, Math.PI * 2); g.fill();
   });
+  // Thin dark clouds streaking across the moon.
+  for (const [y, x0, len, h] of [[my - 30, mx - 150, 230, 6], [my + 8, mx - 60, 260, 9], [my + 40, mx - 190, 200, 5], [my - 62, mx + 10, 160, 4]]) {
+    g.fillStyle = 'rgba(30,8,28,0.85)';
+    g.beginPath(); g.roundRect(x0, y, len, h, h / 2); g.fill();
+    g.fillStyle = 'rgba(255,150,120,0.35)';
+    g.fillRect(x0 + h, y, len - h * 2, 1);
+  }
   return c;
 }
 
@@ -108,22 +121,22 @@ function drawFarHills(g) {
   const w = W + PAD * 2;
   g.save();
   g.translate(-PAD, 0);
-  g.fillStyle = '#271a48';
+  g.fillStyle = '#3a1034';
   g.beginPath(); g.moveTo(0, 330);
   for (let x = 0; x <= w; x += 30) g.lineTo(x, 300 - Math.sin((x - PAD) * 0.008) * 50 - Math.sin((x - PAD) * 0.021) * 22);
   g.lineTo(w, GROUND); g.lineTo(0, GROUND); g.fill();
-  // Moonlit ridge line.
-  g.strokeStyle = 'rgba(160,120,170,0.18)'; g.lineWidth = 1.5;
+  // Ridge line lit by the red horizon.
+  g.strokeStyle = 'rgba(255,110,80,0.55)'; g.lineWidth = 2;
   g.beginPath();
   for (let x = 0; x <= w; x += 30) g.lineTo(x, 300 - Math.sin((x - PAD) * 0.008) * 50 - Math.sin((x - PAD) * 0.021) * 22);
   g.stroke();
-  g.fillStyle = '#1e1338';
+  g.fillStyle = '#220a26';
   g.beginPath(); g.moveTo(0, 380);
   for (let x = 0; x <= w; x += 24) g.lineTo(x, 360 - Math.sin((x - PAD) * 0.013 + 1) * 30 - Math.sin((x - PAD) * 0.04) * 8);
   g.lineTo(w, GROUND); g.lineTo(0, GROUND); g.fill();
   // Distant treeline silhouettes.
   const r = rng(11);
-  g.fillStyle = '#180f2e';
+  g.fillStyle = '#16061a';
   for (let x = 0; x < w; x += 9) {
     const base = 372 - Math.sin((x - PAD) * 0.013 + 1) * 30;
     const h = 8 + r() * 16;
@@ -290,8 +303,8 @@ function cloud() {
     for (let i = 0; i < 14; i++) {
       const x = 30 + r() * 200, y = 40 + (r() - 0.5) * 30, rr = 18 + r() * 22;
       const cg = g.createRadialGradient(x, y, 2, x, y, rr);
-      cg.addColorStop(0, 'rgba(196,178,220,0.2)');
-      cg.addColorStop(1, 'rgba(196,178,220,0)');
+      cg.addColorStop(0, 'rgba(230,140,170,0.16)');
+      cg.addColorStop(1, 'rgba(230,140,170,0)');
       g.fillStyle = cg;
       g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
     }
@@ -355,7 +368,7 @@ function moonRays() {
     rg.globalCompositeOperation = 'lighter';
     for (const [a, w, al] of [[2.0, 0.07, 0.07], [2.25, 0.05, 0.05], [2.5, 0.09, 0.06], [2.8, 0.04, 0.04]]) {
       const gr = rg.createLinearGradient(700, 110, 700 + Math.cos(a) * 600, 110 + Math.sin(a) * 600);
-      gr.addColorStop(0, `rgba(255,236,210,${al})`); gr.addColorStop(1, 'rgba(255,236,210,0)');
+      gr.addColorStop(0, `rgba(255,170,130,${al})`); gr.addColorStop(1, 'rgba(255,170,130,0)');
       rg.fillStyle = gr;
       rg.beginPath(); rg.moveTo(700, 110);
       rg.lineTo(700 + Math.cos(a - w) * 700, 110 + Math.sin(a - w) * 700);
