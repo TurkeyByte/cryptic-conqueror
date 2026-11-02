@@ -338,8 +338,68 @@ export function drawArena(g, time, camShift = 0) {
     g.drawImage(cloud(), x, 60 + i * 38, 300 - i * 40, 100 - i * 14);
   }
   g.globalAlpha = 1;
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = 0.8 + 0.2 * Math.sin(time * 0.4);
+  g.drawImage(moonRays(), 0, 0, W, H);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
   drawFireflies(g, time, camShift);
   drawLeaves(g, time);
+}
+
+// Soft shafts of moonlight slanting down across the scene (built once).
+let raysSprite = null;
+function moonRays() {
+  if (!raysSprite) {
+    const [c, rg] = makeLayer(W, H, 1);
+    rg.globalCompositeOperation = 'lighter';
+    for (const [a, w, al] of [[2.0, 0.07, 0.07], [2.25, 0.05, 0.05], [2.5, 0.09, 0.06], [2.8, 0.04, 0.04]]) {
+      const gr = rg.createLinearGradient(700, 110, 700 + Math.cos(a) * 600, 110 + Math.sin(a) * 600);
+      gr.addColorStop(0, `rgba(255,236,210,${al})`); gr.addColorStop(1, 'rgba(255,236,210,0)');
+      rg.fillStyle = gr;
+      rg.beginPath(); rg.moveTo(700, 110);
+      rg.lineTo(700 + Math.cos(a - w) * 700, 110 + Math.sin(a - w) * 700);
+      rg.lineTo(700 + Math.cos(a + w) * 700, 110 + Math.sin(a + w) * 700);
+      rg.closePath(); rg.fill();
+    }
+    raysSprite = c;
+  }
+  return raysSprite;
+}
+
+// Dark, slightly blurred plants in the very front, at the bottom corners.
+// They slide faster than the fight as the camera pans, which adds depth.
+let fgSprite = null;
+function foregroundSprite() {
+  if (!fgSprite) {
+    const [c, fg] = makeLayer(W + 200, 140, 1);
+    fg.filter = 'blur(1.5px)';
+    const r = rng(23);
+    const clump = (cx, n, hgt) => {
+      for (let i = 0; i < n; i++) {
+        const x = cx + (r() - 0.5) * 120, lean = (r() - 0.5) * 60, h = hgt * (0.5 + r() * 0.6);
+        fg.fillStyle = i % 3 ? '#0b0612' : '#140a1e';
+        fg.beginPath(); fg.moveTo(x - 6, 140); fg.quadraticCurveTo(x + lean * 0.4, 140 - h * 0.6, x + lean, 140 - h);
+        fg.quadraticCurveTo(x + lean * 0.3 + 4, 140 - h * 0.5, x + 6, 140); fg.fill();
+      }
+      // A few broad leaves.
+      for (let i = 0; i < 4; i++) {
+        const x = cx + (r() - 0.5) * 90, a = -Math.PI / 2 + (r() - 0.5) * 1.6;
+        fg.fillStyle = '#0d0716';
+        fg.save(); fg.translate(x, 140); fg.rotate(a + Math.PI / 2);
+        fg.beginPath(); fg.ellipse(0, -40, 12, 42, 0, 0, Math.PI * 2); fg.fill(); fg.restore();
+      }
+    };
+    clump(70, 26, 110);
+    clump(W + 130, 26, 120);
+    fgSprite = c;
+  }
+  return fgSprite;
+}
+
+// camShift: how far the camera has panned from center. Drawn in screen space.
+export function drawForeground(g, camShift = 0) {
+  g.drawImage(foregroundSprite(), -100 - camShift * 0.35, H - 118, W + 200, 140);
 }
 
 // A soft pool of light on the ground under the fighters so they read clearly.
@@ -459,7 +519,15 @@ function noodleShine(g, pts, w) {
   g.strokeStyle = 'rgba(255,255,255,0.15)'; g.lineWidth = Math.max(1.5, w * 0.28);
   g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y - w * 0.2) : g.moveTo(x, y - w * 0.2))); g.stroke();
 }
-function noodle(g, pts, w, color) { noodleOutline(g, pts, w); noodleFill(g, pts, w, color); if (w >= 7) noodleShine(g, pts, w); }
+// A darker band along the lower edge: two-tone cel shading.
+function noodleShade(g, pts, w) {
+  g.strokeStyle = 'rgba(20,6,30,0.24)'; g.lineWidth = Math.max(1.5, w * 0.34);
+  g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y + w * 0.24) : g.moveTo(x, y + w * 0.24))); g.stroke();
+}
+function noodle(g, pts, w, color) {
+  noodleOutline(g, pts, w); noodleFill(g, pts, w, color);
+  if (w >= 7) { noodleShade(g, pts, w); noodleShine(g, pts, w); }
+}
 
 // Moonlight catching the top-front of a rounded shape (clipped to the shape).
 function shine(g, path, x, y, r, alpha = 0.22) {
@@ -1218,20 +1286,92 @@ export function drawParticles(g, parts) {
   g.globalAlpha = 1;
 }
 
-function bar(g, x, y, w, h, frac, shown, color, flip) {
-  g.fillStyle = OL;
-  g.beginPath(); g.roundRect(x - 4, y - 4, w + 8, h + 8, 6); g.fill();
-  g.fillStyle = '#3a0d14';
-  g.fillRect(x, y, w, h);
-  // Lagging white "damage" segment.
-  g.fillStyle = '#f2e6d0';
-  const sw = w * shown;
-  g.fillRect(flip ? x + w - sw : x, y, sw, h);
-  g.fillStyle = color;
-  const fw = w * frac;
-  g.fillRect(flip ? x + w - fw : x, y, fw, h);
-  g.fillStyle = 'rgba(255,255,255,0.18)';
-  g.fillRect(x, y, w, h / 3);
+// ---------------- HUD (fighting-game style) ----------------
+// A slanted bar shape: the inner end (toward the timer) is cut at an angle.
+function slantPath(g, x, y, w, h, s, flip) {
+  g.beginPath();
+  if (flip) { g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w - s, y + h); g.lineTo(x, y + h); }
+  else { g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w, y + h); g.lineTo(x + s, y + h); }
+  g.closePath();
+}
+
+// Health bar: ink and gold frame, red "chip" damage that drains after a hit,
+// a glossy fill that flashes red when health is low. flip: the player's side,
+// which drains away from the timer.
+function bar(g, x, y, w, h, frac, shown, colors, flip, time) {
+  const S = 12;
+  g.save();
+  slantPath(g, x - 5, y - 5, w + 10, h + 10, S + 4, flip);
+  g.fillStyle = OL; g.fill();
+  slantPath(g, x - 2.5, y - 2.5, w + 5, h + 5, S + 2, flip);
+  const rim = g.createLinearGradient(0, y - 3, 0, y + h + 3);
+  rim.addColorStop(0, '#fff1b8'); rim.addColorStop(0.5, '#e0b040'); rim.addColorStop(1, '#8a5a12');
+  g.fillStyle = rim; g.fill();
+  slantPath(g, x, y, w, h, S, flip);
+  g.fillStyle = '#2a0a12'; g.fill();
+  g.clip();
+  const seg = (f) => (flip ? [x + w - w * f, w * f] : [x, w * f]);
+  // Chip damage (red), then the remaining health.
+  let [sx, sw] = seg(shown);
+  g.fillStyle = '#ff4a3a'; g.fillRect(sx, y, sw, h);
+  [sx, sw] = seg(frac);
+  const low = frac < 0.25 && frac > 0;
+  const pulse = low ? 0.5 + 0.5 * Math.sin(time * 10) : 0;
+  const fill = g.createLinearGradient(0, y, 0, y + h);
+  fill.addColorStop(0, low ? `rgb(255,${Math.round(120 + 80 * (1 - pulse))},90)` : colors[0]);
+  fill.addColorStop(1, low ? '#b0201a' : colors[1]);
+  g.fillStyle = fill; g.fillRect(sx, y, sw, h);
+  // Gloss and a fine segment pattern.
+  g.fillStyle = 'rgba(255,255,255,0.32)'; g.fillRect(x, y + 2, w, h * 0.28);
+  g.fillStyle = 'rgba(0,0,0,0.16)';
+  for (let k = x + 24; k < x + w; k += 24) g.fillRect(k, y, 1.5, h);
+  g.restore();
+}
+
+// Round portrait in a gold ring, at the outer end of each bar.
+function portrait(g, img, x, y, r, ring, hurt) {
+  g.save();
+  g.beginPath(); g.arc(x, y, r + 5, 0, Math.PI * 2); g.fillStyle = OL; g.fill();
+  g.beginPath(); g.arc(x, y, r + 2.5, 0, Math.PI * 2); g.fillStyle = ring; g.fill();
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+  const bg = g.createRadialGradient(x, y - r * 0.3, 2, x, y, r);
+  bg.addColorStop(0, '#4a3266'); bg.addColorStop(1, '#1a0e26');
+  g.fillStyle = bg; g.fill();
+  g.clip();
+  if (img) g.drawImage(img, x - r, y - r, r * 2, r * 2);
+  if (hurt > 0) { g.fillStyle = `rgba(255,60,60,${Math.min(0.6, hurt * 3)})`; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  g.restore();
+}
+
+// Angled name plate under a bar.
+function namePlate(g, text, x, y, w, flip, accent) {
+  g.save();
+  g.beginPath();
+  if (flip) { g.moveTo(x, y); g.lineTo(x + w + 10, y); g.lineTo(x + w, y + 20); g.lineTo(x, y + 20); }
+  else { g.moveTo(x - 10, y); g.lineTo(x + w, y); g.lineTo(x + w, y + 20); g.lineTo(x, y + 20); }
+  g.closePath();
+  g.fillStyle = 'rgba(12,6,18,0.85)'; g.fill();
+  g.strokeStyle = accent; g.lineWidth = 1.5; g.stroke();
+  g.font = 'italic 900 13px system-ui, sans-serif';
+  g.fillStyle = '#fff4dc';
+  g.textAlign = flip ? 'left' : 'right';
+  g.textBaseline = 'middle';
+  g.fillText(text, flip ? x + 8 : x + w - 8, y + 10.5);
+  g.restore();
+}
+
+// Round-win medal: a gold (or green) diamond when won, an empty socket otherwise.
+function medal(g, x, y, won, color) {
+  g.save();
+  g.translate(x, y); g.rotate(Math.PI / 4);
+  g.fillStyle = OL; g.fillRect(-8, -8, 16, 16);
+  if (won) {
+    const gr = g.createLinearGradient(-6, -6, 6, 6);
+    gr.addColorStop(0, '#fffbe8'); gr.addColorStop(0.4, color); gr.addColorStop(1, '#5a3a10');
+    g.fillStyle = gr;
+  } else g.fillStyle = 'rgba(255,255,255,0.12)';
+  g.fillRect(-5.5, -5.5, 11, 11);
+  g.restore();
 }
 
 // HUD text with a dark ink outline so it reads over the bright moon or anything else.
@@ -1245,67 +1385,100 @@ function inkText(g, text, x, y) {
   g.fillText(text, x, y);
 }
 
-export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score, intent, focus, aswangName = 'ASWANG', level = 1 }) {
-  const bw = 360;
-  bar(g, 30, 26, bw, 18, player.hp / player.maxHp, shownP, '#e0b040', true);
-  bar(g, W - 30 - bw, 26, bw, 18, aswang.hp / aswang.maxHp, shownA, '#8fd16a', false);
-  g.font = 'bold 14px system-ui, sans-serif';
-  g.fillStyle = '#f2e6d0';
-  g.textAlign = 'left';
-  inkText(g, 'DAKILA · Kali', 30, 62);
-  g.textAlign = 'right';
-  inkText(g, aswangName, W - 30, 62);
-  // Round pips.
+export function drawHud(g, { player, aswang, shownP, shownA, round, timer, score, intent, focus, aswangName = 'ASWANG', level = 1, portraits = {}, time = 0 }) {
+  const bw = 318, by = 26, bh = 20;
+  const lx = 92, rx = W - 92 - bw;
+  bar(g, lx, by, bw, bh, player.hp / player.maxHp, shownP, ['#ffe27a', '#e09a20'], true, time);
+  bar(g, rx, by, bw, bh, aswang.hp / aswang.maxHp, shownA, ['#c8f58a', '#4f9a34'], false, time);
+  portrait(g, portraits.player, 48, 38, 30, '#e0b040', player.state === 'hurt' ? player.flash : 0);
+  portrait(g, portraits.aswang, W - 48, 38, 30, '#8fd16a', aswang.state === 'hurt' ? aswang.flash : 0);
+  namePlate(g, 'DAKILA', lx, by + bh + 9, 110, true, '#e0b040');
+  namePlate(g, aswangName, rx + bw - 150, by + bh + 9, 150, false, '#8fd16a');
+  // Round-win medals beside the name plates, toward the timer.
   for (let i = 0; i < 2; i++) {
-    g.fillStyle = i < score.player ? '#e0b040' : 'rgba(255,255,255,0.15)';
-    g.beginPath(); g.arc(30 + bw - 10 - i * 18, 62, 6, 0, Math.PI * 2); g.fill();
-    g.fillStyle = i < score.aswang ? '#8fd16a' : 'rgba(255,255,255,0.15)';
-    g.beginPath(); g.arc(W - 30 - bw + 10 + i * 18, 62, 6, 0, Math.PI * 2); g.fill();
+    medal(g, lx + bw - 12 - i * 22, by + bh + 19, i < score.player, '#e0b040');
+    medal(g, rx + 12 + i * 22, by + bh + 19, i < score.aswang, '#8fd16a');
   }
-  // Timer.
+  // Timer badge.
+  const tx = W / 2, ty = 14;
+  g.save();
+  g.beginPath(); g.roundRect(tx - 38, ty, 76, 54, 10);
+  g.fillStyle = OL; g.fill();
+  g.beginPath(); g.roundRect(tx - 35, ty + 3, 70, 48, 8);
+  const tg = g.createLinearGradient(0, ty, 0, ty + 54);
+  tg.addColorStop(0, '#2c1a40'); tg.addColorStop(1, '#120a1c');
+  g.fillStyle = tg; g.fill();
+  g.strokeStyle = '#e0b040'; g.lineWidth = 2; g.stroke();
+  const urgent = timer <= 10;
+  const tScale = urgent ? 1 + 0.08 * Math.max(0, Math.sin(time * 8)) : 1;
+  g.translate(tx, ty + 30); g.scale(tScale, tScale);
+  g.font = '900 34px system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineJoin = 'round'; g.strokeStyle = OL; g.lineWidth = 6;
+  g.strokeText(String(Math.ceil(timer)), 0, 1);
+  g.fillStyle = urgent ? '#ff6b6b' : '#fff4dc';
+  g.fillText(String(Math.ceil(timer)), 0, 1);
+  g.restore();
   g.textAlign = 'center';
-  g.fillStyle = 'rgba(0,0,0,0.6)';
-  g.fillRect(W / 2 - 34, 14, 68, 46);
-  g.fillStyle = timer <= 10 ? '#ff6b6b' : '#f2e6d0';
-  g.font = 'bold 30px system-ui, sans-serif';
-  g.fillText(String(Math.ceil(timer)), W / 2, 48);
-  g.font = 'bold 10px system-ui, sans-serif';
-  g.fillStyle = '#c9b8a0';
-  inkText(g, `ROUND ${round}`, W / 2, 74);
+  g.font = 'italic 900 11px system-ui, sans-serif';
+  g.fillStyle = '#e3c890';
+  inkText(g, `ROUND ${round}`, W / 2, 82);
   if (level > 1) {
     g.fillStyle = level >= 5 ? '#ff5a64' : '#c084fc';
-    inkText(g, `LEVEL ${level}`, W / 2, 87);
+    inkText(g, `LEVEL ${level}`, W / 2, 96);
   }
 
-  // Intent tag under the Aswang's bar, so the adaptation is visible in-arena too.
+  // Intent tag under the Aswang's name plate, so the adaptation is visible in-arena too.
   const c = INTENT_COLORS[intent] || '#fff';
   const label = `MIND: ${intent}${focus.length ? ' · ' + focus.map((f) => f.replace(/_/g, ' ')).join(' · ') : ''}`;
   g.font = 'bold 11px system-ui, sans-serif';
   g.textAlign = 'right';
+  g.textBaseline = 'alphabetic';
   const tw = g.measureText(label).width;
   g.fillStyle = 'rgba(0,0,0,0.6)';
-  g.fillRect(W - 30 - tw - 12, 72, tw + 12, 18);
+  g.fillRect(W - 30 - tw - 12, 82, tw + 12, 18);
   g.fillStyle = c;
-  g.fillText(label, W - 36, 85);
+  g.fillText(label, W - 36, 95);
 }
 
+// Big fighting-game announcer text (ROUND 1, LABAN!, K.O.): slams in on a
+// slanted band, with a metallic fill and a thick ink outline.
 export function drawBanner(g, text, sub, alpha, color = '#f2e6d0') {
+  if (alpha <= 0) return;
   g.save();
-  g.globalAlpha = alpha;
-  g.textAlign = 'center';
-  g.fillStyle = 'rgba(0,0,0,0.5)';
-  g.fillRect(0, H / 2 - 70, W, sub ? 120 : 100);
-  g.font = 'bold 64px system-ui, sans-serif';
-  g.fillStyle = color;
-  g.shadowColor = color; g.shadowBlur = 24;
-  g.fillText(text, W / 2, H / 2);
-  g.shadowBlur = 0;
-  if (sub) {
-    g.font = 'bold 18px system-ui, sans-serif';
-    g.fillStyle = '#c9b8a0';
-    g.fillText(sub, W / 2, H / 2 + 34);
-  }
+  const cy = H / 2 - 14;
+  g.globalAlpha = Math.min(1, alpha * 1.4);
+  // Band.
+  const band = g.createLinearGradient(0, 0, W, 0);
+  band.addColorStop(0, 'rgba(8,4,14,0)'); band.addColorStop(0.2, 'rgba(8,4,14,0.78)');
+  band.addColorStop(0.8, 'rgba(8,4,14,0.78)'); band.addColorStop(1, 'rgba(8,4,14,0)');
+  g.fillStyle = band;
+  g.beginPath(); g.moveTo(0, cy - 58); g.lineTo(W, cy - 72); g.lineTo(W, cy + (sub ? 62 : 40)); g.lineTo(0, cy + (sub ? 76 : 54)); g.closePath(); g.fill();
+  g.strokeStyle = hexA(color.length === 7 ? color : '#f2e6d0', 0.8); g.lineWidth = 2;
+  g.beginPath(); g.moveTo(W * 0.12, cy - 60); g.lineTo(W * 0.88, cy - 70); g.stroke();
+  g.beginPath(); g.moveTo(W * 0.12, cy + (sub ? 74 : 52)); g.lineTo(W * 0.88, cy + (sub ? 64 : 42)); g.stroke();
+  // Title: scales down into place as it appears.
+  const k = Math.min(1, alpha);
+  const sc = 1 + (1 - k) * 0.7;
+  g.translate(W / 2, cy); g.scale(sc, sc); g.rotate(-0.03);
+  g.font = 'italic 900 78px system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  g.strokeStyle = OL; g.lineWidth = 12; g.strokeText(text, 0, 0);
+  const tg = g.createLinearGradient(0, -34, 0, 34);
+  tg.addColorStop(0, '#fffbe8'); tg.addColorStop(0.45, color); tg.addColorStop(1, hexA(color.length === 7 ? color : '#f2e6d0', 0.75));
+  g.fillStyle = tg; g.fillText(text, 0, 0);
+  g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillText(text, -2, -3);
+  g.fillStyle = tg; g.fillText(text, 0, -1);
   g.restore();
+  if (sub) {
+    g.save();
+    g.globalAlpha = Math.min(1, alpha * 1.4);
+    g.font = 'bold 18px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.fillStyle = '#e8dcc4';
+    inkText(g, sub, W / 2, cy + 52);
+    g.restore();
+  }
 }
 
 // Floating callout above the Aswang when Nemotron changes its plan.

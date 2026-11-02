@@ -8,7 +8,7 @@ import { sfx, unlockAudio, toggleMute } from './audio.js';
 import {
   W, H, INTENT_COLORS, drawArena, drawPlayer, drawAswang, drawProjectile, drawShadow,
   drawParticles, drawHud, drawBanner, drawThought, drawControlsHint, drawFog,
-  drawManananggal, drawLegs, drawStageLight,
+  drawManananggal, drawLegs, drawStageLight, drawForeground,
 } from './render.js';
 
 const ROUND_TIME = 60;
@@ -532,6 +532,28 @@ function update(dt) {
 }
 
 // ---------------- Draw ----------------
+// HUD portraits: each fighter's head, drawn once from a stand-in in its idle
+// pose (the Aswang's is redrawn when its eye color changes with its plan).
+const portraitCache = { player: null, aswang: null, eye: null };
+function headShot(paint, f, cx, cy, size = 128, zoom = 1.9) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const pg = c.getContext('2d');
+  pg.translate(size / 2, size / 2); pg.scale(zoom, zoom); pg.translate(-cx, -cy);
+  paint(pg, f);
+  return c;
+}
+const stand = { player: new Fighter('player', { maxHp: 1, walkSpeed: 0, moves: PLAYER_MOVES }), aswang: new Fighter('aswang', { maxHp: 1, walkSpeed: 0, moves: ASWANG_MOVES }) };
+stand.player.reset(0, 1); stand.aswang.reset(0, -1);
+function portraits() {
+  if (!portraitCache.player) portraitCache.player = headShot((c, f) => drawPlayer(c, f, 1), stand.player, 11, GROUND - 113);
+  const eye = INTENT_COLORS[brain.intent];
+  if (portraitCache.eye !== eye) {
+    portraitCache.aswang = headShot((c, f) => drawAswang(c, f, 1, eye, 0), stand.aswang, -49, GROUND - 117);
+    portraitCache.eye = eye;
+  }
+  return portraitCache;
+}
 // Afterimages for fast movement: dashes, lunges, leaps.
 function recordGhosts(f, dt) {
   f.ghosts = (f.ghosts || []).filter((gh) => (gh.t -= dt) > 0);
@@ -599,13 +621,14 @@ function draw() {
   drawFog(g, game.time);
   drawParticles(g, game.particles);
   g.restore();
+  if (game.mode !== 'title') drawForeground(g, (cam.x - W / 2) * cam.z);
   if (game.flash > 0) {
     g.fillStyle = `rgba(255,245,230,${Math.min(0.5, game.flash * 1.6)})`;
     g.fillRect(0, 0, W, H);
   }
 
   if (game.mode !== 'title') {
-    drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus, level: level(), aswangName: aswang.form === 'manananggal' ? 'MANANANGGAL' : 'ASWANG' });
+    drawHud(g, { player, aswang, shownP: game.shownP, shownA: game.shownA, round: game.round, timer: game.timer, score: game.score, intent: brain.intent, focus: brain.focus, level: level(), aswangName: aswang.form === 'manananggal' ? 'MANANANGGAL' : 'ASWANG', portraits: portraits(), time: game.time });
     // The bubble is drawn in screen space, anchored to where the Aswang is on screen.
     const ax = (aswang.x - cam.x) * cam.z + W / 2;
     const ay = (aswang.y - GROUND) * cam.z + groundScreenY();
